@@ -79,15 +79,22 @@ Components, all running as systemd units (or one Docker compose stack):
    automation step is a message. This is what makes the system **replayable
    and auditable**, which HA's YAML model is bad at.
 4. **State store** — SQLite for durable state + Redis for hot cache.
-5. **Voice pipeline** — see §4.
-6. **Intent router** — turns transcribed text into a structured
+5. **Conversation store (vCon)** — see §4a. Every voice interaction is
+   persisted as a signed [vCon](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/)
+   (IETF Virtualized Conversations container). This is the canonical record
+   of "who said what to which device when," and the unit the automation
+   engine and UI replay against.
+6. **Voice pipeline** — see §4.
+7. **Intent router** — turns transcribed text into a structured
    `{device, action, params}` call. Tries fast local grammar first
    (openWakeWord + Rhasspy-style intents), falls back to the LLM planner.
-7. **Automation engine** — LLM-driven, but compiles each automation to a
+   Each routed turn appends a `dialog` + `analysis` entry to the active vCon.
+8. **Automation engine** — LLM-driven, but compiles each automation to a
    deterministic rule the user can read, edit, and version. The LLM is the
-   author; the runtime is boring and predictable.
-8. **UI** — web app + PWA (works on phones/TVs). Real-time via SSE off the
-   event bus.
+   author; the runtime is boring and predictable. Source of truth for "why
+   did this fire?" is the linked vCon.
+9. **UI** — web app + PWA (works on phones/TVs). Real-time via SSE off the
+   event bus; conversation history view reads vCons directly.
 
 ### Why not just fork Home Assistant?
 
@@ -155,6 +162,88 @@ Echo/HomePod/Sonos/Pi speaker.
 
 ---
 
+## 4a. Conversation format — vCon
+
+Every voice interaction is recorded as a [vCon](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/)
+(IETF Virtualized Conversations, JSON container). vCon is to a voice
+session what an email message is to a thread: a single signed,
+self-contained, portable record. Using it instead of a homegrown schema
+gives us interop, signing/provenance, and a clean replay primitive.
+
+**One vCon per "conversation"**, where a conversation = wake word →
+silence-out plus any follow-up turns within an idle window. Schema we
+populate:
+
+```jsonc
+{
+  "vcon": "0.0.2",
+  "uuid": "018f8e…",              // ULID, also the NATS subject suffix
+  "created_at": "2026-05-04T18:22:11Z",
+  "subject": "kitchen lights off",
+  "parties": [
+    { "role": "user",      "name": "Ryan",        "tel": null,
+      "meta": { "presence_room": "kitchen" } },
+    { "role": "assistant", "name": "HearthOS",    "uuid": "hearth-core" },
+    { "role": "device",    "name": "Kitchen LED", "uuid": "zigbee:0x84fd…" }
+  ],
+  "dialog": [
+    { "type": "recording", "start": "...", "duration": 2.1,
+      "parties": [0], "mediatype": "audio/opus",
+      "url": "file:///var/lib/hearthos/audio/018f8e.opus",
+      "signature": "..." },
+    { "type": "text", "parties": [0],
+      "body": "hey hearth turn off the kitchen lights" },
+    { "type": "text", "parties": [1],
+      "body": "ok, turning off the kitchen lights" }
+  ],
+  "analysis": [
+    { "type": "transcript", "vendor": "whisper.cpp",
+      "schema": "whisper.v1",
+      "body": { "text": "...", "segments": [...], "lang": "en" } },
+    { "type": "intent", "vendor": "hearthos.fast",
+      "schema": "hearthos.intent.v1",
+      "body": { "device": "zigbee:0x84fd…", "action": "off",
+                "confidence": 0.94, "model": "phi-3-mini-q4" } },
+    { "type": "tool_calls", "vendor": "hearthos.router",
+      "body": [ { "tool": "device.set_state",
+                  "args": { "id": "zigbee:0x84fd…", "state": "off" },
+                  "result": "ok", "latency_ms": 142 } ] }
+  ],
+  "attachments": [
+    { "type": "automation_link", "url": "hearthos://automation/00f2…" }
+  ]
+}
+```
+
+How the system uses it:
+
+- **Storage**: vCons live as files in `/var/lib/hearthos/vcons/` (one
+  JSON per conversation, audio stored alongside, referenced by URL),
+  indexed in SQLite for search. Older ones can be moved to cold storage.
+- **Signing**: each finalized vCon is signed (JWS, Ed25519 key on the Pi)
+  so tampering is detectable. Audio chunks carry hash refs from the
+  `dialog[].signature` field.
+- **Bus integration**: voice pipeline emits NATS events
+  `vcon.dialog.appended`, `vcon.analysis.appended`, `vcon.finalized`.
+  The vCon UUID is the correlation ID across the whole stack — the
+  automation engine, UI, and audit log all key off it.
+- **Replay**: the automation engine can re-run a vCon's `analysis.intent`
+  through a different model to A/B router changes. The UI can scrub
+  through any past conversation, see the transcript and the tool calls
+  that resulted, and "why did the lights turn off?" answers itself.
+- **Privacy controls**: per-room retention windows; "forget last
+  conversation" is `rm` on a single file; export/share is just copying
+  the (signed) JSON.
+- **Interop**: because it's the IETF format, third-party tools (analytics,
+  contact-center QA, transcript search) can consume them unchanged.
+
+We follow the latest `draft-ietf-vcon-*` revision and pin a version
+field in our store so we can migrate forward. We do **not** invent
+proprietary extension types where a standard one exists; custom analysis
+goes under our own `vendor: "hearthos.*"` namespace per the spec.
+
+---
+
 ## 5. Device-class plan
 
 What we discover and how, in priority order:
@@ -188,8 +277,17 @@ notification: "Found a UniFi G4 Doorbell at 10.0.0.42 — adopt?".
 - Device registry schema + REST + event-bus contract.
 - Stub web UI showing live event stream.
 
+**Phase 0.5 — vCon plumbing (3–5 days, before voice)**
+- Pick a vCon library (`vcon-py` if it fits; otherwise a thin wrapper —
+  the spec is small). Pin to a draft revision.
+- Conversation store: filesystem layout, SQLite index, JWS signing key
+  generation on first boot.
+- NATS subjects + JSON contracts for `vcon.*` events.
+- Tiny CLI: `hearthctl vcon show <uuid>`, `hearthctl vcon verify <uuid>`.
+
 **Phase 1 — Voice loop on a Pi mic (2–3 weeks)**
 - openWakeWord + whisper.cpp + Piper end-to-end.
+- Every interaction creates and finalizes a signed vCon end-to-end.
 - Fast LLM (Phi-3-mini, llama.cpp) doing intent → tool calls.
 - 5 hard-coded tools: lights on/off, scene, timer, weather, status.
 - Success criterion: "Hey Hearth, turn off the kitchen lights" works end to
