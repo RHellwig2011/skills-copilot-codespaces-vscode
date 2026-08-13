@@ -118,11 +118,14 @@ Two-tier model strategy:
 
 | Tier        | Model                                  | Where it runs                          | Used for |
 |-------------|-----------------------------------------|----------------------------------------|----------|
-| Fast        | Phi-3-mini / Llama-3.2-3B (Q4, llama.cpp)| Pi 5 (CPU or Hailo)                    | Intent classification, short replies, automation triage; also the **fallback** if the GPU box is offline. |
-| Smart       | **Qwen2.5-14B-Instruct (AWQ) on vLLM**  | **4060 Ti box, Linux + Docker**        | Automation authoring, ambiguous requests, multi-step plans. 16 GB VRAM fits 14B AWQ comfortably with room for KV cache. |
-| STT         | `whisper.cpp` small (Pi) / large-v3 (GPU)| Pi 5 default; GPU for long-form        | All voice input. |
+| Fast        | Llama-3.2-3B / Qwen3-4B (Q4, llama.cpp) | Pi 5 (CPU or Hailo)                    | Intent classification, short replies, automation triage; also the **fallback** if the GPU box is offline. Kept resident at all times. |
+| Smart       | **7B/8B-class instruct at W4A16 on vLLM** | **4060 Ti 16 GB, sole GPU tenant**   | Automation authoring, ambiguous requests, multi-step plans. **Revised down from 14B — see §3a.** |
+| STT (fast)  | `whisper.cpp` small                     | Pi 5                                   | The normal voice path. |
+| STT (accurate)| faster-whisper large-v3-turbo, int8   | **GPU-box CPU**, not the GPU           | Long-form / high-accuracy path. |
 | TTS         | Piper                                   | Pi 5                                   | All voice output. |
 | Wake        | openWakeWord                            | Pi 5 + each satellite                  | "Hey Hearth" + custom phrases, fully on-device. |
+| Speaker ID  | ECAPA-TDNN (22M)                        | **Pi 5 CPU**                           | Survives GPU-box failure, so "turn on *my* lights" still works in degraded mode. |
+| Face ID     | InsightFace SCRFD + ArcFace             | **GPU-box CPU**                        | ~2 events/hour; 100–200 ms on CPU. Not worth permanent VRAM. |
 
 Routing rule: if the fast model's structured-output confidence ≥ threshold,
 ship it; otherwise escalate to the smart model on the 4060 Ti. If the GPU
@@ -130,12 +133,155 @@ box is unreachable, we fall back to the fast model with a degraded-mode
 banner in the UI. Token-level streaming so spoken replies start while the
 model is still generating.
 
-**Inference-server stack on the 4060 Ti** (Linux + Docker):
-- `vllm/vllm-openai` container, OpenAI-compatible endpoint on port 8000.
-- Bound to the LAN interface only; firewall blocks WAN.
-- NVIDIA Container Toolkit + driver 550+; CUDA 12.4.
-- Model files on local NVMe; warm-up on container start.
-- A second container runs `whisper.cpp` server for long-form transcription.
+A **tool-use loop** is the LLM's only way to act: it can call
+`devices.list`, `device.set_state`, `automation.create`,
+`scene.activate`, etc. It cannot execute arbitrary code. Every tool call is
+logged on the bus.
+
+---
+
+## 3a. GPU box configuration (4060 Ti 16 GB — confirmed)
+
+**The plan as originally written does not fit.** Confirming the 16 GB
+variant did not rescue the 14B; it made the ceiling precise enough to prove
+it fails. Two exactly-computed numbers settle it before any estimate enters:
+
+- **Qwen2.5-14B-Instruct-AWQ weights = 9.29 GiB.**
+- **Its KV cache = 192 KiB/token** (48 layers × 2 × 8 GQA KV heads × 128
+  head-dim × 2 bytes). At 32k context that is **6.00 GiB**.
+
+9.29 + 6.00 = **15.29 GiB** against a card that reports 15.99 GiB total and
+~15.2 GiB safely allocatable headless — with **zero** CUDA context, zero
+activations, and none of Whisper/face-ID/speaker-ID loaded. Adding those
+takes the full original plan to ~25 GiB, a ~10 GiB shortfall. No plausible
+correction to a soft estimate closes that.
+
+### Revised budget — 7B, single tenant
+
+| Item | GiB | Notes |
+|---|---:|---|
+| CUDA context + torch runtime | 0.5–0.7 | measure |
+| Model weights (7B-class AWQ/W4A16) | 5.19 | exact for Qwen2.5-7B-AWQ |
+| Activations (`max_num_batched_tokens=2048`) | 0.5–0.7 | measure |
+| CUDA graphs (capture sizes `[1,2,4]`) | 0.1–0.2 | keep graphs; eager costs 15–30% decode |
+| **Fixed subtotal** | **≈ 6.5** | |
+| KV pool @ `--gpu-memory-utilization 0.75` | ≈ 5.5 | 56 KiB/token → **~100k tokens** |
+| **vLLM total** | **≈ 12.0** | |
+| **Unallocated headroom** | **≈ 3.6** | absorbs estimate error and fragmentation |
+
+FP16 KV throughout — we don't need FP8, which removes a whole class of
+backend-compatibility and scale-calibration risk from the critical path.
+
+### Two decisions this forces
+
+**1. Smart tier drops to a 7B/8B-class model.** Baseline
+`Qwen2.5-7B-Instruct-AWQ` (arithmetic verified, official quant, known-good
+vLLM path); a Qwen3 8B-class W4A16 is preferable if it validates on the box.
+This is a *bandwidth* decision as much as capacity — the 4060 Ti has only
+~288 GB/s, and decode streams weights + the entire live KV every token:
+
+| Model | Realistic tok/s @4k | @16k |
+|---|---:|---:|
+| 14B-AWQ | ~23 | ~19 |
+| 7B-AWQ | **~45** | **~40** |
+
+**2. The GPU becomes a single-tenant vLLM box.** Every auxiliary model
+moves to the GPU-box CPU or the Pi (see the §3 table). Reasons, in order of
+force: each extra GPU process costs 0.3–0.7 GiB of CUDA context before a
+single weight loads; vLLM profiles once at startup and *never shrinks*, so
+whatever grows later is what dies — months on, unattended; and collisions
+are correlated, not random (doorbell → face-ID → "who's at the door?" → LLM
+within two seconds). Moving face-ID off the GPU makes that failure
+structurally impossible.
+
+### Honest note on latency
+
+**The 2–5 s smart-tier target is not met for long outputs by any model that
+fits this card.** At ~40 tok/s a 300-token response is ~7.5 s of decode.
+Mitigations, in order of value: (1) design the smart tier to emit terse
+schema-constrained JSON of 60–100 tokens and template the spoken reply on
+the Pi — 100 tokens at 40 tok/s is 2.5 s; (2) stream to Piper sentence-by-
+sentence so perceived latency collapses to TTFT (~0.4–0.6 s warm);
+(3) n-gram speculative decoding, zero VRAM, strong on edit-shaped authoring.
+Note the 1.5 s round-trip target belongs to the **Pi's fast path**, not the
+smart tier.
+
+### Prefix caching is the highest-leverage flag
+
+The tool schemas and device registry are a large constant prompt prefix.
+`--enable-prefix-caching` takes warm TTFT from ~5–7 s to ~0.4–0.6 s — but
+only if the prompt is ordered **static block first, volatile last**. A
+timestamp near the top drives the hit rate to zero. Serialize the registry
+deterministically (sorted by entity ID, fixed float formatting). Better
+still: get the registry out of the prompt entirely behind a
+`find_devices(query)` tool — smaller context, stable prefix across device
+additions, and hallucinated entity IDs become impossible.
+
+Drive structure with `response_format: {"type":"json_schema"}` or
+`tool_choice: "required"` — **not** `--enable-auto-tool-choice` with a text
+parser, the most common source of silent failures in production vLLM tool
+loops. Generate the `entity_id` `enum` from the live registry.
+
+### Security posture
+
+**vLLM ships with no authentication.** Four layers, all of them:
+
+1. `VLLM_API_KEY` via `env_file` (0600, root) — not `--api-key`, which
+   leaks into `docker inspect` and argv.
+2. Bind to the LAN IP explicitly: `ports: ["192.168.x.x:8000:8000"]`, never
+   `"8000:8000"`.
+3. **A `DOCKER-USER` iptables rule — `ufw deny 8000` does not work.**
+   Docker's DNAT sits in `PREROUTING`, evaluated before the `INPUT` chain
+   ufw manages. Insert DROP, then RETURN for the Pi's IP only. Verify from
+   a third LAN host; the curl must time out.
+4. Treat `/health` and `/metrics` as unauthenticated — exemptions have
+   varied by version, so the firewall is what protects them.
+
+### Reliability for 24/7 unattended
+
+- `apt-mark hold` the NVIDIA driver packages and blacklist them in
+  `unattended-upgrades`. An unattended driver upgrade without a reboot is
+  the **#1 cause** of "worked for two months, died overnight".
+- Boot to `multi-user.target` (headless) — recovers 0.3–1.0 GiB.
+- **Docker healthchecks mark a container unhealthy but never restart it.**
+  Add a systemd timer that polls `docker inspect` and restarts on
+  `unhealthy`, plus a canary issuing a real completion — `/health` can
+  return 200 on a wedged engine.
+- Watch `dmesg` for Xid errors; **Xid 79 is unrecoverable without a host
+  reboot** and is the classic silent-death mode for a consumer card.
+- Alert on `vllm:num_preemptions_total`, prefix-cache hit rate < 0.80, and
+  per-process VRAM drift (catches slow leaks no aggregate metric shows).
+- **Degradation must be audible.** Identity is enrichment, never a gate: if
+  face-ID is down the doorbell still announces "someone at the front door."
+
+### What changes if…
+
+| If we want… | Change | Cost |
+|---|---|---|
+| 32k context | `--max-model-len 32768` | Fits (4×32k = 7.0 GiB). Decode ~40 → ~34 tok/s. |
+| 128k context | Don't | Qwen's YaRN is static scaling — degrades everything under 32k, which is all real traffic. |
+| Face-ID on GPU | Drop util to ~0.62, strict ORT caps, start before vLLM | ~1.0 GiB + a 4–8 s first-inference cuDNN search. **Not recommended** — CPU is 100–200 ms/frame at zero VRAM. |
+| The 14B anyway | Separate process, vLLM sleep mode, woken on demand | ~10 GiB host RAM, 3–6 s wake. Experiment, not a shipped path. |
+| Both a 14B and full aux residency | A second GPU (used 3060 12 GB ≈ $200) or a 24 GB card | A 3090 also triples decode — **bandwidth, not capacity, is the real constraint on this design.** |
+
+### Caveat on these numbers
+
+The two exact figures above (9.29 GiB weights, 192 KiB/token) are derived
+from published architecture parameters and are load-bearing — they alone
+kill the 14B. **Most other figures are estimates that were not
+web-verified** (the research pass lost network access mid-run). Before
+committing hardware time, measure on the actual box:
+
+1. **Single-stream tok/s for the chosen model.** The 75% bandwidth-
+   efficiency haircut is an estimate and this one benchmark decides the
+   model-size question outright.
+2. vLLM flag names on the pinned version — several have churned
+   (`--disable-log-requests` was inverted in some releases; the
+   structured-output backend flag was renamed around 0.11).
+3. Measured CUDA context per process.
+4. Whisper CPU real-time factor on the actual GPU-box CPU.
+5. A 72-hour soak with per-process VRAM sampling before calling it
+   production.
 
 A **tool-use loop** is the LLM's only way to act: it can call
 `devices.list`, `device.set_state`, `automation.create`,
@@ -472,7 +618,12 @@ folding these into the roadmap:
 - Alexa control-only adapter (HearthOS devices show up in Alexa).
 
 **Phase 4 — LLM automation authoring (3 weeks)**
-- Stand up vLLM on the 4060 Ti (Qwen2.5-14B AWQ), OpenAI-compatible API.
+- **Benchmark single-stream tok/s on the actual 4060 Ti first** — this
+  decides the final model size (§3a) before anything is built on top.
+- Stand up vLLM on the 4060 Ti (7B-class W4A16, sole GPU tenant),
+  OpenAI-compatible API, prefix caching verified by warm-vs-cold A/B.
+- Lock the security posture: API key, LAN-IP bind, `DOCKER-USER` rule
+  verified from a third host.
 - Pi-side router that picks fast vs. smart tier and falls back on GPU outage.
 - "When the doorbell rings after 10 pm, flash the bedroom lamp" → the LLM
   emits a deterministic rule, shows it to the user, saves it on approval.
@@ -491,8 +642,15 @@ folding these into the roadmap:
 - **Echo mic capture is out of scope** under the strictly-local rule. If you
   ever relax that, a single AWS Lambda + Cloudflare Tunnel re-enables it.
 - **GPU-box single point of failure**: smart-tier replies depend on the
-  4060 Ti box. Mitigation: Pi-side fast-model fallback + a clear
-  "degraded mode" UI banner when the GPU host is unreachable.
+  4060 Ti box. Mitigation: Pi-side fast-model fallback kept resident at all
+  times + a clear "degraded mode" UI banner. Speaker-ID lives on the Pi
+  specifically so per-person voice survives a GPU outage.
+- **The 4060 Ti is bandwidth-starved, not just VRAM-limited** (~288 GB/s).
+  This caps the smart tier at ~40 tok/s for a 7B and is not fixable by
+  tuning — only by a different card. See §3a.
+- **Smart-tier latency**: the 2–5 s target is not met for long outputs by
+  any model that fits 16 GB. We work around it with terse JSON output and
+  streaming TTS rather than pretending the number is achievable.
 - **Pi 5 LLM perf**: a 3B Q4 model runs ~6–10 tok/s on CPU; usable for short
   intents, slow for paragraphs. The fallback is functional, not great.
 - **Echo cancellation** on TV audio is non-trivial; we'll start with
