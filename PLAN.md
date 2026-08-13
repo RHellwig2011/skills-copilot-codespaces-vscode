@@ -25,6 +25,8 @@
   three paths in the MVP.
 - **Project name**: working name **HearthOS**, wake word "Hey Hearth" — both
   renameable before v1.
+- **Whole-house audio**: user has whole-house speaker wiring already run.
+  We integrate with the existing system rather than replace it — see §5b.
 
 ---
 
@@ -157,8 +159,8 @@ with `room_id`. The voice pipeline does **room-scoped wake detection** and
 **speaker echo cancellation** (so the TV's own audio doesn't trigger it).
 
 Output (TTS) plays back on the **closest active speaker** to whoever spoke,
-chosen by last-known presence. Falls back to TV if it's on, else nearest
-Echo/HomePod/Sonos/Pi speaker.
+chosen by last-known presence. Falls back to TV if it's on, else the
+nearest whole-house-audio zone (§5b), else Echo/HomePod/Pi speaker.
 
 ---
 
@@ -270,6 +272,97 @@ notification: "Found a UniFi G4 Doorbell at 10.0.0.42 — adopt?".
 
 ---
 
+## 5a. Feature set (user-selected)
+
+All 16 requested. Grouped by capability, tagged by which phase they land in.
+Each is expressed as user-visible behavior, not implementation detail — the
+implementation slots into the architecture from §2–§5.
+
+### Security & cameras
+
+| Feature | Phase | Notes |
+|---|---|---|
+| **Person / package / vehicle alerts** | 2 | UniFi Protect smart-detect events → NATS → phone push + TV overlay + spoken announcement on nearest speaker. Cheap; ships with the UniFi adapter. |
+| **Face recognition** | 5 | Local model (InsightFace / ArcFace) on the GPU box. Faces enrolled per-person; feeds "who's home" presence signal. Photos never leave the LAN. |
+| **Auto-arm on leave** | 4 | Presence rule: when last known phone leaves geofence for >5 min, arm cameras, lock smart locks, set thermostat to away. Undoable via voice. |
+| **Cross-camera tracking** | 6 | Re-identification model correlates a person across UniFi cams; UI shows one timeline: "front door → hallway → kitchen at 8:14". Expensive; last. |
+
+### Media & communication
+
+| Feature | Phase | Notes |
+|---|---|---|
+| **Voice-controlled TV** | 2 | LG WebOS adapter first ("play Severance on the living room"), then Android TV. Deep-links into apps where possible. |
+| **Whole-house audio + intercom** | 3 | TTS/music routed to any zone of the existing wired speaker system (see §5b). "Announce dinner" fans out to every zone. Snapcast handles multi-zone sync when the amp doesn't natively. |
+| **Movie mode auto-scene** | 4 | "Netflix launched on living room TV" event → dim lights, close blinds, set thermostat, pause vacuum. Editable as a rule. |
+| **Follow-me media** | 6 | Music/podcast hand-off between speakers based on presence. Needs solid room-level presence (BLE + mmWave) — that's why it's late. |
+
+### Energy & climate
+
+| Feature | Phase | Notes |
+|---|---|---|
+| **Water leak + auto-shutoff** | 3 | Highest-value safety feature. Zigbee leak sensors + smart shutoff valve; rule fires before the phone push arrives. |
+| **Per-room climate zones** | 4 | Presence + temp sensors per room; smart vents or per-room mini-splits. Learns occupancy schedules. |
+| **Energy dashboard + alerts** | 4 | Live watts per device (Emporia Vue / Shelly EM / smart plugs). "Dryer's been running 2 h — done?" nudges. Monthly cost forecast. |
+| **Solar / EV charging optimization** | 5 | Watches inverter + utility rate API; shifts EV, dryer, dishwasher, water heater to solar-peak or off-peak. Explains its choices in the UI. |
+
+### AI behavior & family
+
+| Feature | Phase | Notes |
+|---|---|---|
+| **Natural conversation** | 1 | Free-form Q&A ("what's on TV tonight?", "how's the house?") via the smart-tier LLM. Not just command grammar. |
+| **Per-person voice profiles** | 3 | Speaker-ID model (pyannote / SpeechBrain) tags each vCon with a party. "Turn on my lights" resolves per-speaker. |
+| **Proactive routines learned from behavior** | 5 | Pattern miner over the event log proposes rules: "You dim the office at sunset 6 days a week — automate it?" User approves/edits/rejects; nothing auto-fires. |
+| **Kid mode + guest mode** | 4 | Per-person policy: content filters, quiet hours, no smart-lock control for kids; time-boxed access codes and Wi-Fi/scene bundles for guests. |
+
+### 5b. Whole-house audio (existing wired system)
+
+User has whole-house speaker wiring already run. We integrate rather than
+replace. Three concrete adapter paths depending on what's driving the
+wire today; we support all three, user picks one:
+
+1. **Multi-zone amp with LAN control** (Sonos Amp / Denon HEOS / Russound
+   MCA / Nuvo / WiiM Amp Pro). We speak the amp's native protocol per zone
+   — best case, native TTS ducking and per-zone volume already work. This
+   is the preferred path if the current amp supports it.
+2. **"Dumb" multi-zone amp fed by one source per zone** (Monoprice 6-zone,
+   Dayton, older Russound). We drive it with a single small SBC per source
+   (or a multi-output DAC on the Pi's GPU box) running **Snapcast servers**,
+   one stream per zone. Snapcast gives us perfect sync, per-zone volume via
+   its client protocol, and mixed TTS/music.
+3. **Single stereo amp, all speakers parallel** (one big zone). Simplest —
+   one Snapcast stream, everything plays the same thing. We still route
+   TTS through it with music ducking.
+
+Regardless of path, the abstraction the rest of the system sees is
+**`audio_zone`** objects in the device registry (`kitchen`, `patio`,
+`primary_bath`, …). Automations and voice ("announce dinner in the whole
+house", "play jazz on the patio only") target zones, not hardware.
+
+Ceiling-speaker rooms without a smart mic get a **Pi Zero 2 W + ReSpeaker
+2-mic HAT** stuck near the doorway as the room's ears; the ceiling
+speakers remain the room's mouth. Total per new mic-only room: ~$45.
+
+Open items I need from you to finalize this (asked below): what amp / matrix
+is driving the wire today, how many zones, and whether every zone already
+has a working source or the wire dead-ends at a panel.
+
+### Cross-cutting requirements this pulls in
+
+Adding all 16 forces a few things earlier than the base plan had them —
+folding these into the roadmap:
+
+- **Presence subsystem** (Phase 3): phone geofence + BLE room-level + optional
+  mmWave. Needed by auto-arm, per-person voice, follow-me media, climate
+  zones, movie mode.
+- **Person/policy service** (Phase 4): per-person profiles, ACLs, quiet
+  hours. Needed by voice profiles, kid mode, guest mode.
+- **GPU-node inference gateway** (Phase 4): face-ID, speaker-ID, and the
+  smart LLM all live here. Single gRPC surface, Pi is a client.
+- **Pattern miner + suggestion inbox** (Phase 5): reads the event log +
+  vCons, proposes rules, never auto-applies.
+
+---
+
 ## 6. Phased roadmap
 
 **Phase 0 — Skeleton (1–2 weeks)**
@@ -299,10 +392,11 @@ notification: "Found a UniFi G4 Doorbell at 10.0.0.42 — adopt?".
 - Zigbee2MQTT bridge.
 - Web UI: device list, room assignment, manual control.
 
-**Phase 3 — Multi-room voice (2 weeks)**
+**Phase 3 — Multi-room voice + whole-house audio (2–3 weeks)**
 - Pi Zero 2 W satellite image: openWakeWord + audio streamer + speaker out.
-- Room-scoped wake routing; echo cancellation against TV audio.
-- TTS playback routing to the nearest speaker (TV / satellite / Echo).
+- Room-scoped wake routing; echo cancellation against TV / ceiling audio.
+- Whole-house audio adapter for whichever §5b path the existing amp needs.
+- `audio_zone` device class; TTS + music routing to zones by name.
 - Phone PWA push-to-talk over LAN.
 - Alexa control-only adapter (HearthOS devices show up in Alexa).
 
@@ -350,5 +444,9 @@ notification: "Found a UniFi G4 Doorbell at 10.0.0.42 — adopt?".
    final name before we train a custom wake word.
 3. **Satellite count + rooms**: how many Pi Zero 2 W satellites to budget
    for, and which rooms get them vs. relying on the TV remote / phone.
+4. **Whole-house audio hardware**: what amp / matrix is driving the
+   speaker wire today (brand + model), how many zones, and does every
+   zone already have a working source or does some wire terminate at a
+   panel with no source? Answer decides which §5b path we build.
 
 Phase 0 can start as soon as #1 is answered.
