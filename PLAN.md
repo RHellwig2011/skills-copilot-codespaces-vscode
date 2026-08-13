@@ -25,8 +25,12 @@
   three paths in the MVP.
 - **Project name**: working name **HearthOS**, wake word "Hey Hearth" — both
   renameable before v1.
-- **Whole-house audio**: user has whole-house speaker wiring already run.
-  We integrate with the existing system rather than replace it — see §5b.
+- **Whole-house audio**: speaker wire already run to **9+ zones** (in-ceiling
+  indoor + outdoor), but it **dead-ends at a panel** — no amp installed.
+  Greenfield amp spec: **AmpliPro controller + Zone Expander (12 zones)**,
+  driven by HearthOS over its REST API. See §5b.
+- **GPU VRAM**: 4060 Ti is the **16 GB** variant (confirmed). See §3a for the
+  VRAM budget and what that does and does not fit.
 
 ---
 
@@ -38,8 +42,9 @@
 | Radio bridge        | SkyConnect / Sonoff ZBDongle-E (Zigbee + Thread)    | Plus optional Z-Wave stick. |
 | Mic array (fallback)| ReSpeaker 4-mic or 2-mic HAT                        | For rooms without a TV/Echo. |
 | AI accelerator (opt)| Hailo-8L M.2 on the Pi 5 NVMe HAT                   | Optional. Speeds up local Whisper + small LLM if the GPU box is offline. |
-| **GPU box**         | **Linux + Docker, RTX 4060 Ti (16 GB)**             | **Confirmed.** Runs vLLM/Ollama for the smart-tier model. |
+| **GPU box**         | **Linux + Docker, RTX 4060 Ti 16 GB**               | **Confirmed 16 GB variant.** Runs vLLM for the smart-tier model. VRAM budget in §3a. |
 | Voice satellites    | Pi Zero 2 W + ReSpeaker 2-mic, one per room         | Always-on wake word + audio streaming back to the Pi 5. |
+| **Multi-zone amp**  | **AmpliPro controller + 1 Zone Expander (12 zones)**| Open-source, Pi-based, REST API. Drives the existing ceiling + outdoor wiring. See §5b. |
 
 The Pi 5 is the always-on coordinator. The 4060 Ti box is the inference
 server; the Pi calls it over HTTP/gRPC. If the GPU box is down, the Pi
@@ -314,37 +319,98 @@ implementation slots into the architecture from §2–§5.
 | **Proactive routines learned from behavior** | 5 | Pattern miner over the event log proposes rules: "You dim the office at sunset 6 days a week — automate it?" User approves/edits/rejects; nothing auto-fires. |
 | **Kid mode + guest mode** | 4 | Per-person policy: content filters, quiet hours, no smart-lock control for kids; time-boxed access codes and Wi-Fi/scene bundles for guests. |
 
-### 5b. Whole-house audio (existing wired system)
+## 5b. Whole-house audio — 9+ zones, greenfield amp
 
-User has whole-house speaker wiring already run. We integrate rather than
-replace. Three concrete adapter paths depending on what's driving the
-wire today; we support all three, user picks one:
+**Confirmed situation**: speaker wire is run throughout (in-ceiling indoor
++ outdoor pairs), 9+ independent zones, and the wire **dead-ends at a
+panel** — no amp installed. That's the best case: we spec the amplifier
+rather than working around one. All four capabilities are in scope: TTS/
+announcements everywhere, per-zone music streaming, room-to-room intercom,
+and doorbell/alert chimes.
 
-1. **Multi-zone amp with LAN control** (Sonos Amp / Denon HEOS / Russound
-   MCA / Nuvo / WiiM Amp Pro). We speak the amp's native protocol per zone
-   — best case, native TTS ducking and per-zone volume already work. This
-   is the preferred path if the current amp supports it.
-2. **"Dumb" multi-zone amp fed by one source per zone** (Monoprice 6-zone,
-   Dayton, older Russound). We drive it with a single small SBC per source
-   (or a multi-output DAC on the Pi's GPU box) running **Snapcast servers**,
-   one stream per zone. Snapcast gives us perfect sync, per-zone volume via
-   its client protocol, and mixed TTS/music.
-3. **Single stereo amp, all speakers parallel** (one big zone). Simplest —
-   one Snapcast stream, everything plays the same thing. We still route
-   TTS through it with music ducking.
+### Recommended hardware: AmpliPro (open-source AmpliPi)
 
-Regardless of path, the abstraction the rest of the system sees is
-**`audio_zone`** objects in the device registry (`kitchen`, `patio`,
-`primary_bath`, …). Automations and voice ("announce dinner in the whole
-house", "play jazz on the patio only") target zones, not hardware.
+[AmpliPro](https://github.com/micro-nova/AmpliPi) by MicroNova is a
+rack-mount multi-zone amplifier + matrix built on a Raspberry Pi Compute
+Module, **fully open source** (software, firmware, and schematics), with a
+documented **OpenAPI REST API**. It is the closest thing to a
+purpose-built appliance for exactly this plan.
 
-Ceiling-speaker rooms without a smart mic get a **Pi Zero 2 W + ReSpeaker
-2-mic HAT** stuck near the doorway as the room's ears; the ceiling
-speakers remain the room's mouth. Total per new mic-only room: ~$45.
+| Spec | Value |
+|---|---|
+| Zones per controller | 6 |
+| Max zones | 36 (controller + Zone Expanders, 6 each) |
+| Simultaneous independent audio programs | **4** (see limitation below) |
+| Built-in sources | AirPlay, Spotify Connect, DLNA, LMS, Bluetooth, internet radio, Pandora, USB, + 4 analog RCA in |
+| Control | REST API (OpenAPI), self-hosted web app; existing Home Assistant + openHAB integrations to crib from |
+| Platform | Raspberry Pi CM3+, Python + C firmware, I²C zone/volume control |
 
-Open items I need from you to finalize this (asked below): what amp / matrix
-is driving the wire today, how many zones, and whether every zone already
-has a working source or the wire dead-ends at a panel.
+For 9+ zones: **1 controller + 1 Zone Expander = 12 zones**, one rack, one
+API. Add a second expander later for 18 if the outdoor/garage runs grow.
+
+### How HearthOS uses it
+
+We treat AmpliPro as a **controllable amplifier and matrix**, not as the
+brain. HearthOS owns the audio content and the routing policy:
+
+- HearthOS runs **Snapcast** servers and feeds AmpliPro's analog/stream
+  inputs. Zone routing, per-zone volume, and mute are driven through
+  AmpliPro's REST API from a HearthOS adapter.
+- Each AmpliPro zone becomes an **`audio_zone`** object in the device
+  registry (`kitchen`, `patio`, `primary_bath`, …). Automations and voice
+  target zones and zone groups — never hardware. "Announce dinner
+  everywhere", "play jazz on the patio only", "mute the kids' rooms".
+- **TTS ducking**: HearthOS lowers music on the target zone, plays the
+  Piper output, restores volume. Because we own both the Snapcast stream
+  and the zone volume API, ducking is ours to implement correctly rather
+  than something we hope the amp does.
+- **Announcement priority queue**: doorbell and leak/security chimes
+  preempt music and TTS; a leak alarm interrupts everything in every zone.
+  Priority levels are a first-class concept, not a race.
+- **Intercom** is a routed vCon: mic in room A → zone B's speakers, with
+  the whole exchange recorded as a normal signed vCon (§4a).
+
+### Known limitation — 4 simultaneous programs
+
+AmpliPro plays **4 independent audio programs at once**, routed to any
+number of zones. With 12 zones that means at most 4 different things
+playing; zones sharing a program stay in sync. In practice 4 concurrent
+distinct programs in one household is generous, and announcements
+temporarily borrow a source slot rather than needing their own.
+
+If that ceiling ever binds, the escape hatch is **full Snapcast-per-zone**:
+a Pi Zero 2 W + USB DAC per zone feeding a dumb rack power amp (e.g. a
+multichannel Dayton/Monoprice). Unlimited independent streams and perfect
+sync, at the cost of a box per zone and losing the single-API convenience.
+We keep the `audio_zone` abstraction identical either way, so this swap is
+an adapter change, not a rewrite.
+
+### Outdoor zones
+
+Outdoor pairs need their own attention: verify impedance and whether the
+runs are 8Ω direct or 70V distributed (older outdoor installs sometimes
+are). Outdoor zones also get **separate volume curves and quiet hours** —
+an announcement that's right indoors is a neighbor complaint at 11pm.
+
+### Mics are separate
+
+Ceiling speakers are the house's **mouth, not its ears**. Every room that
+needs voice input still gets a **Pi Zero 2 W + ReSpeaker 2-mic HAT**
+(~$45/room) near the doorway, or relies on a TV remote mic / phone PWA.
+Room-to-room intercom in particular requires a mic in every participating
+room — worth budgeting for up front given 9+ zones.
+
+### Budget sketch
+
+| Item | Qty | Notes |
+|---|---|---|
+| AmpliPro controller | 1 | 6 zones, streaming, REST API |
+| AmpliPro Zone Expander | 1 | +6 zones (12 total) |
+| Pi Zero 2 W + ReSpeaker 2-mic | per voice room | ~$45 each |
+| Rack, cabling, panel terminations | 1 | Depends on existing panel |
+
+Verify current AmpliPro pricing directly — public figures are stale, and
+a 12-zone build is the single largest line item in this project.
 
 ### Cross-cutting requirements this pulls in
 
@@ -392,11 +458,16 @@ folding these into the roadmap:
 - Zigbee2MQTT bridge.
 - Web UI: device list, room assignment, manual control.
 
-**Phase 3 — Multi-room voice + whole-house audio (2–3 weeks)**
+**Phase 3 — Multi-room voice + whole-house audio (3–4 weeks)**
+- **Rack the AmpliPro controller + expander**; terminate the 12 zones at the
+  panel, label and verify every run (including outdoor impedance check).
+- AmpliPro REST adapter; `audio_zone` device class in the registry.
+- Snapcast servers on the Pi feeding AmpliPro inputs; TTS ducking.
+- Announcement priority queue (leak/security > doorbell > TTS > music).
+- Room-to-room intercom over vCon.
 - Pi Zero 2 W satellite image: openWakeWord + audio streamer + speaker out.
 - Room-scoped wake routing; echo cancellation against TV / ceiling audio.
-- Whole-house audio adapter for whichever §5b path the existing amp needs.
-- `audio_zone` device class; TTS + music routing to zones by name.
+- Outdoor zone quiet hours + separate volume curves.
 - Phone PWA push-to-talk over LAN.
 - Alexa control-only adapter (HearthOS devices show up in Alexa).
 
@@ -444,9 +515,18 @@ folding these into the roadmap:
    final name before we train a custom wake word.
 3. **Satellite count + rooms**: how many Pi Zero 2 W satellites to budget
    for, and which rooms get them vs. relying on the TV remote / phone.
-4. **Whole-house audio hardware**: what amp / matrix is driving the
-   speaker wire today (brand + model), how many zones, and does every
-   zone already have a working source or does some wire terminate at a
-   panel with no source? Answer decides which §5b path we build.
+4. **Exact zone count + room names**: "9+" needs to become a list before we
+   order. 12 zones (controller + 1 expander) is the working assumption —
+   confirm, and name each zone so the registry and voice targets match how
+   you actually talk about the house.
+5. **Outdoor speaker wiring**: are the outdoor runs 8Ω direct or 70V
+   distributed? Changes the amp/transformer spec. Needs a physical check at
+   the panel.
+6. **Which rooms get mics**: ceiling speakers give us output in 12 zones,
+   but intercom and voice control need a mic per room (~$45 each). Which
+   rooms actually need to *hear* you vs. just talk to you?
+7. **AmpliPro current pricing**: public figures are stale and this is the
+   biggest line item. Verify before committing to the design.
 
-Phase 0 can start as soon as #1 is answered.
+Phase 0 can start as soon as #1 is answered — it's pure software and
+doesn't depend on any hardware decision.
