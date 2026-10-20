@@ -7,6 +7,10 @@ Features:
 - 🐉 Fus Ro Dah super like
 - Skyrim-style lockpicking mini-game blocks the deck after the 4th Erik
 - Message Erik: 3 messages unlocks his Instagram, 200 unlocks his Snapchat
+- 🧠 "How well do you know Erik?" quiz (5+ right earns a bonus match)
+- 📅 Date planner that roasts each pick and can send the plan to Erik
+- 🔇/🔊 Synthesized sound effects, muted by default
+- Link preview card (`photos/og.jpg`) when the URL is shared
 
 Files:
 - `index.html`, `style.css`, `app.js` — the whole site, no build step

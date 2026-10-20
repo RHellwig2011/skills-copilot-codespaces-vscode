@@ -199,6 +199,7 @@ function swipe(dir) {
   card.classList.add("leaving");
   card.style.transform = `translate(${x * window.innerWidth}px, -60px) rotate(${x * 30}deg)`;
   card.querySelector(dir === "left" ? ".stamp.nope" : ".stamp.like").style.opacity = 1;
+  sfx.play("whoosh");
 
   lastMatched = PROFILES[deckIndex];
   deckIndex++;
@@ -210,9 +211,21 @@ function swipe(dir) {
 }
 
 // Every like (or super like) is a match. Nope just moves on.
+function updateMatchCount() {
+  $("matchCount").textContent = `💘 ${matches}`;
+  $("matchCount").title = `${matches} match${matches === 1 ? "" : "es"}`;
+}
+
+// The quiz hands out a match without a swipe.
+function addBonusMatch() {
+  matches++;
+  updateMatchCount();
+}
+
 function showMatch(dir) {
   matches++;
-  $("matchCount").textContent = `${matches} match${matches === 1 ? "" : "es"}`;
+  updateMatchCount();
+  sfx.play("match");
   const notes = {
     right: "Erik swiped right on you before you even opened the app.",
     super: "FUS RO DAH! You shouted Erik clean off the screen and straight into your matches.",
@@ -270,6 +283,7 @@ function turnLock() {
     cyl.style.transform = "rotate(90deg)";
     $("lpStatus").textContent = "🔓 Unlocked! Erik's heart is open. Lockpicking skill increased.";
     lockDone = true;
+    sfx.play("unlock");
     setTimeout(() => {
       $("lockpick").hidden = true;
       cyl.style.transform = "";
@@ -280,6 +294,7 @@ function turnLock() {
   cyl.style.transform = `rotate(${Math.max(0, 80 - off * 1.6)}deg)`;
   setTimeout(() => { cyl.style.transform = ""; }, 400);
   if (off > 35) {
+    sfx.play("snap");
     lockpicks--;
     const pick = $("lpPick");
     pick.classList.add("broken");
@@ -291,6 +306,7 @@ function turnLock() {
       $("lpStatus").textContent = ["*snap* Your lockpick broke.", "*snap* Erik's heart remains locked.", "*snap* Have you tried being a Khajiit?"][lockpicks % 3];
     }
   } else {
+    sfx.play("turn");
     $("lpStatus").textContent = off > 20 ? "The lock budges a little…" : "So close. The lock almost turns.";
   }
   $("lpPicks").textContent = `Lockpicks: ${lockpicks}`;
@@ -321,6 +337,7 @@ function setSentCount(n) {
   renderUnlocks();
   for (const s of [INSTA, SNAP]) {
     if (before < s.at && n >= s.at) {
+      sfx.play("unlock");
       addMsg(s === INSTA
         ? `🎉 3 messages! You unlocked Erik's Instagram: ${s.handle}`
         : `👻 200 messages. Erik is now legally required to give you his Snap: ${s.handle}`, "them system");
@@ -368,6 +385,7 @@ function erikSays() {
   const typing = addMsg("Erik is typing…", "them typing");
   setTimeout(() => {
     typing.remove();
+    sfx.play("pop");
     addMsg(ERIK_REPLIES[replyIndex++ % ERIK_REPLIES.length], "them");
   }, 900 + Math.random() * 900);
 }
@@ -463,6 +481,7 @@ $("btnSuper").addEventListener("click", () => {
   card.classList.add("leaving");
   card.style.transform = "translateY(-120vh) rotate(-25deg) scale(.6)";
   $("shout").hidden = false;
+  sfx.play("shout");
   setTimeout(() => { $("shout").hidden = true; }, 900);
   lastMatched = PROFILES[deckIndex];
   deckIndex++;
@@ -475,3 +494,14 @@ $("myMsgs").addEventListener("click", openChat);
 $("restart").addEventListener("click", startSwiping);
 $("lpAngle").addEventListener("input", aimPick);
 $("lpTurn").addEventListener("click", turnLock);
+
+function showSoundState() {
+  $("soundBtn").textContent = sfx.on ? "🔊" : "🔇";
+  $("soundBtn").setAttribute("aria-label", sfx.on ? "Sound on" : "Sound off");
+}
+$("soundBtn").addEventListener("click", () => {
+  sfx.toggle();
+  showSoundState();
+  sfx.play("pop");
+});
+showSoundState();

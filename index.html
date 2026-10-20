@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Erikder</title>
   <meta name="description" content="The dating app with exactly one option.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://erikder.vercel.app/">
+  <meta property="og:title" content="Erikder: the dating app with exactly one option">
+  <meta property="og:description" content="Swipe right on Erik. Then swipe right on Erik again. There is no one else.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/RHellwig2011/skills-copilot-codespaces-vscode/db4313e0d50b94996b6ba1fc4c9fba7361ae729f/photos/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/RHellwig2011/skills-copilot-codespaces-vscode/db4313e0d50b94996b6ba1fc4c9fba7361ae729f/photos/og.jpg">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -37,8 +46,11 @@
     <header class="topbar">
       <div class="logo small">🔥 Erik<span>der</span></div>
       <div class="topbar-right">
-        <div class="matches-pill" id="matchCount">0 matches</div>
-        <button class="icon msgs-btn" id="myMsgs" aria-label="My messages">💬</button>
+        <div class="matches-pill" id="matchCount" title="0 matches">💘 0</div>
+        <button class="icon top-btn" id="quizBtn" aria-label="Erik quiz" title="How well do you know Erik?">🧠</button>
+        <button class="icon top-btn" id="dateBtn" aria-label="Plan a date" title="Plan a date with Erik">📅</button>
+        <button class="icon top-btn" id="soundBtn" aria-label="Sound off" title="Sound">🔇</button>
+        <button class="icon top-btn" id="myMsgs" aria-label="My messages" title="Messages">💬</button>
       </div>
     </header>
     <div class="deck" id="deck"></div>
@@ -55,6 +67,8 @@
     <h2>You've seen every Erik.</h2>
     <p>Good news: there are no other men on this app. You matched with all of them. They are all Erik.</p>
     <button class="btn primary" id="openChat">Message Erik</button>
+    <button class="btn" id="doneQuiz">🧠 Take the Erik quiz</button>
+    <button class="btn" id="doneDate">📅 Plan a date with Erik</button>
     <button class="btn ghost" id="restart">See the Eriks again</button>
   </section>
 
@@ -124,8 +138,37 @@
 
   <div class="shout" id="shout" hidden>FUS RO DAH!</div>
 
+  <!-- Erik quiz -->
+  <div id="quiz" class="overlay" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <h2>🧠 How well do you know Erik?</h2>
+        <button class="icon" id="quizClose" aria-label="Close">×</button>
+      </header>
+      <p class="panel-sub" id="quizProgress"></p>
+      <h3 class="quiz-q" id="quizQ"></h3>
+      <div class="quiz-opts" id="quizOpts"></div>
+      <p class="quiz-feedback" id="quizFeedback"></p>
+      <button class="btn primary" id="quizNext" hidden>Next</button>
+      <button class="btn ghost" id="quizRetake" hidden>Retake the quiz</button>
+    </div>
+  </div>
+
+  <!-- Date planner -->
+  <div id="date" class="overlay" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <h2>📅 Plan a date with Erik</h2>
+        <button class="icon" id="dateClose" aria-label="Close">×</button>
+      </header>
+      <div id="dateBody"></div>
+    </div>
+  </div>
+
   <script src="photo-base.js"></script>
+  <script src="sounds.js"></script>
   <script src="app.js"></script>
+  <script src="extras.js"></script>
   <script type="module" src="live-chat.js"></script>
 </body>
 </html>
