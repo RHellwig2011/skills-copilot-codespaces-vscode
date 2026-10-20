@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Erikder</title>
+  <meta name="description" content="The dating app with exactly one option.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://erikder.vercel.app/">
+  <meta property="og:title" content="Erikder: the dating app with exactly one option">
+  <meta property="og:description" content="Swipe right on Erik. Then swipe right on Erik again. There is no one else.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/RHellwig2011/skills-copilot-codespaces-vscode/db4313e0d50b94996b6ba1fc4c9fba7361ae729f/photos/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/RHellwig2011/skills-copilot-codespaces-vscode/db4313e0d50b94996b6ba1fc4c9fba7361ae729f/photos/og.jpg">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Splash: who are you? -->
+  <section id="splash" class="screen active">
+    <div class="logo">🔥 Erik<span>der</span></div>
+    <p class="tagline">The dating app with <b>exactly one</b> option.</p>
+    <p class="sub">Over 1 profiles to choose from!</p>
+    <p class="question">I am a…</p>
+    <div class="choices">
+      <button class="btn primary" data-gender="woman">Woman</button>
+      <button class="btn" data-gender="man">Man</button>
+      <button class="btn" data-gender="other">Other</button>
+    </div>
+    <p class="fine">By continuing you agree to match with Erik. This is not optional.</p>
+  </section>
+
+  <!-- Rejection for non-women -->
+  <section id="nope" class="screen">
+    <div class="big-emoji">🐸🚫</div>
+    <h2>Sorry, Erik is saving himself.</h2>
+    <p>Erik is only accepting applications from women at this time.<br>He is, however, open to being your friend from a distance, in the dark.</p>
+    <button class="btn primary" id="lied">Wait, I misclicked. I'm a woman.</button>
+    <button class="btn ghost" id="backToStart">Back</button>
+  </section>
+
+  <!-- Swipe deck -->
+  <section id="app" class="screen">
+    <header class="topbar">
+      <div class="logo small">🔥 Erik<span>der</span></div>
+      <div class="topbar-right">
+        <div class="matches-pill" id="matchCount" title="0 matches">💘 0</div>
+        <button class="icon top-btn" id="quizBtn" aria-label="Erik quiz" title="How well do you know Erik?">🧠</button>
+        <button class="icon top-btn" id="dateBtn" aria-label="Plan a date" title="Plan a date with Erik">📅</button>
+        <button class="icon top-btn" id="soundBtn" aria-label="Sound off" title="Sound">🔇</button>
+        <button class="icon top-btn" id="myMsgs" aria-label="My messages" title="Messages">💬</button>
+      </div>
+    </header>
+    <div class="deck" id="deck"></div>
+    <div class="actions">
+      <button class="round nope" id="btnNope" aria-label="Nope">✕</button>
+      <button class="round super" id="btnSuper" aria-label="Fus Ro Dah (super like)" title="Fus Ro Dah">🐉</button>
+      <button class="round like" id="btnLike" aria-label="Like">♥</button>
+    </div>
+  </section>
+
+  <!-- Out of profiles -->
+  <section id="done" class="screen">
+    <div class="big-emoji">🐸💜</div>
+    <h2>You've seen every Erik.</h2>
+    <p>Good news: there are no other men on this app. You matched with all of them. They are all Erik.</p>
+    <button class="btn primary" id="openChat">Message Erik</button>
+    <button class="btn" id="doneQuiz">🧠 Take the Erik quiz</button>
+    <button class="btn" id="doneDate">📅 Plan a date with Erik</button>
+    <button class="btn ghost" id="restart">See the Eriks again</button>
+  </section>
+
+  <!-- Match overlay -->
+  <div id="match" class="overlay" hidden>
+    <div class="match-inner">
+      <h1 class="its-a-match">It's a Match!</h1>
+      <p id="matchText">You and Erik liked each other.</p>
+      <div class="match-photos">
+        <div class="mp you">🙋‍♀️</div>
+        <div class="mp eric" id="matchErik"></div>
+      </div>
+      <p class="match-note" id="matchNote"></p>
+      <p class="match-roast" id="matchRoast"></p>
+      <div class="compat">
+        <div class="compat-label">Compatibility</div>
+        <div class="compat-bar"><div class="compat-fill" id="compatFill"></div></div>
+        <div class="compat-num" id="compatNum">0%</div>
+      </div>
+      <button class="btn primary" id="sendMsg">Send a message</button>
+      <button class="btn ghost" id="keepSwiping">Keep swiping (it's still him)</button>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat" class="overlay" hidden>
+    <div class="chat-box">
+      <header class="chat-head">
+        <button class="icon" id="closeChat" aria-label="Close">‹</button>
+        <div class="chat-avatar" id="chatAvatar"></div>
+        <div>
+          <div class="chat-name">Erik</div>
+          <div class="chat-status" id="chatStatus">Online · in the dark</div>
+        </div>
+      </header>
+      <div class="unlocks" id="unlocks">
+        <div class="unlock" id="instaUnlock"></div>
+        <div class="unlock" id="snapUnlock"></div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="signin" id="signin" hidden>
+        <button class="btn google" id="googleBtn" type="button"><span class="g">G</span> Sign in with Google</button>
+      </div>
+      <form class="composer" id="composer">
+        <input id="msgInput" autocomplete="off" placeholder="Say something to Erik…">
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Skyrim-style lockpicking, blocks the deck partway through -->
+  <div id="lockpick" class="overlay" hidden>
+    <div class="lp-inner">
+      <h2 class="lp-title">This Erik is locked.</h2>
+      <p class="lp-sub">Lock level: <b>Expert</b> · Pick it to keep swiping</p>
+      <div class="lp-lock" id="lpLock">
+        <div class="lp-cylinder" id="lpCylinder"><div class="lp-keyhole"></div></div>
+        <div class="lp-pick" id="lpPick"></div>
+      </div>
+      <input type="range" id="lpAngle" min="0" max="180" value="90" aria-label="Lockpick angle">
+      <p class="lp-hint">Slide to move the lockpick, then turn the lock.<br>The further the lock turns, the closer you are.</p>
+      <button class="btn primary" id="lpTurn">Turn lock</button>
+      <p class="lp-status" id="lpStatus"></p>
+      <p class="lp-picks" id="lpPicks"></p>
+    </div>
+  </div>
+
+  <div class="shout" id="shout" hidden>FUS RO DAH!</div>
+
+  <!-- Erik quiz -->
+  <div id="quiz" class="overlay" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <h2>🧠 How well do you know Erik?</h2>
+        <button class="icon" id="quizClose" aria-label="Close">×</button>
+      </header>
+      <p class="panel-sub" id="quizProgress"></p>
+      <h3 class="quiz-q" id="quizQ"></h3>
+      <div class="quiz-opts" id="quizOpts"></div>
+      <p class="quiz-feedback" id="quizFeedback"></p>
+      <button class="btn primary" id="quizNext" hidden>Next</button>
+      <button class="btn ghost" id="quizRetake" hidden>Retake the quiz</button>
+    </div>
+  </div>
+
+  <!-- Date planner -->
+  <div id="date" class="overlay" hidden>
+    <div class="panel">
+      <header class="panel-head">
+        <h2>📅 Plan a date with Erik</h2>
+        <button class="icon" id="dateClose" aria-label="Close">×</button>
+      </header>
+      <div id="dateBody"></div>
+    </div>
+  </div>
+
+  <script src="photo-base.js"></script>
+  <script src="sounds.js"></script>
+  <script src="app.js"></script>
+  <script src="extras.js"></script>
+  <script type="module" src="live-chat.js"></script>
+</body>
+</html>

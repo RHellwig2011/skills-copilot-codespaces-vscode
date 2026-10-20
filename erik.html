@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Erik's Inbox</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { overflow: auto; }
+    .inbox { max-width: 480px; margin: 0 auto; padding: 16px; }
+    .inbox .login { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 40px; }
+    .inbox input { font: inherit; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); width: 100%; max-width: 280px; }
+    .thread { display: flex; justify-content: space-between; gap: 12px; padding: 14px 4px; border-bottom: 1px solid var(--line); cursor: pointer; text-align: left; }
+    .thread .who { font-weight: 700; }
+    .thread .last { color: var(--muted); font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pink); flex: none; align-self: center; }
+    .empty, .err { color: var(--muted); text-align: center; margin-top: 40px; }
+    .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <main class="inbox" id="inbox">
+    <div class="logo small" style="text-align:center">🔥 Erik<span>der</span> · Inbox</div>
+    <div class="login" id="login" hidden>
+      <p>Erik only. Everyone else, go swipe.</p>
+      <button class="btn primary" id="googleBtn" type="button">Sign in with Google</button>
+      <p class="err" id="loginErr"></p>
+    </div>
+    <div id="threads" hidden></div>
+    <p class="empty" id="status">Loading…</p>
+    <p style="text-align:center"><button class="btn ghost" id="signOut" hidden>Sign out</button></p>
+  </main>
+
+  <div id="chat" class="overlay" hidden>
+    <div class="chat-box">
+      <header class="chat-head">
+        <button class="icon" id="closeChat" aria-label="Back">‹</button>
+        <div class="chat-avatar">🙋‍♀️</div>
+        <div><div class="chat-name" id="chatName"></div><div class="chat-status">Matched with you (obviously)</div></div>
+      </header>
+      <div class="messages" id="messages"></div>
+      <form class="composer" id="composer">
+        <input id="msgInput" autocomplete="off" placeholder="Reply as Erik…">
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { firebaseConfig } from "./firebase-config.js";
+    const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+    const $ = (id) => document.getElementById(id);
+
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "PASTE_ME") {
+      $("status").textContent = "Live chat isn't set up yet. Fill in firebase-config.js (see README).";
+    } else {
+      const { initializeApp } = await import(SDK + "firebase-app.js");
+      const authMod = await import(SDK + "firebase-auth.js");
+      const db = await import(SDK + "firebase-database.js");
+      const app = initializeApp(firebaseConfig);
+      const auth = authMod.getAuth(app);
+      const database = db.getDatabase(app);
+      let openId = null, stopThread = null, chats = {};
+
+      const seenKey = (id) => "ericderSeen:" + id;
+      const seen = (id) => { try { return Number(localStorage.getItem(seenKey(id))) || 0; } catch { return 0; } };
+      const markSeen = (id) => { try { localStorage.setItem(seenKey(id), Date.now()); } catch {} };
+
+      function renderThreads() {
+        const list = Object.entries(chats).sort((a, b) => (b[1].updated || 0) - (a[1].updated || 0));
+        $("threads").replaceChildren();
+        $("status").textContent = list.length ? "" : "No messages yet. Shocking, truly.";
+        for (const [id, c] of list) {
+          const msgs = Object.values(c.messages || {}).sort((a, b) => a.ts - b.ts);
+          const last = msgs[msgs.length - 1];
+          const row = document.createElement("div");
+          row.className = "thread";
+          const text = document.createElement("div");
+          text.style.minWidth = "0";
+          const who = document.createElement("div");
+          who.className = "who";
+          who.textContent = c.name || "Mystery woman";
+          const lastEl = document.createElement("div");
+          lastEl.className = "last";
+          lastEl.textContent = last ? (last.from === "erik" ? "You: " : "") + last.text : "";
+          text.append(who, lastEl);
+          row.append(text);
+          if (last && last.from === "her" && last.ts > seen(id)) {
+            const dot = document.createElement("div");
+            dot.className = "dot";
+            row.append(dot);
+          }
+          row.addEventListener("click", () => openThread(id));
+          $("threads").append(row);
+        }
+        const unread = $("threads").querySelectorAll(".dot").length;
+        document.title = unread ? `(${unread}) Erik's Inbox` : "Erik's Inbox";
+      }
+
+      function openThread(id) {
+        openId = id;
+        $("chatName").textContent = chats[id]?.name || "Mystery woman";
+        $("chat").hidden = false;
+        const q = db.query(db.ref(database, `chats/${id}/messages`), db.orderByChild("ts"));
+        stopThread = db.onValue(q, (snap) => {
+          $("messages").replaceChildren();
+          snap.forEach((m) => {
+            const v = m.val();
+            const el = document.createElement("div");
+            el.className = "msg " + (v.from === "erik" ? "me" : "them");
+            el.textContent = v.text;
+            $("messages").append(el);
+          });
+          $("messages").scrollTop = $("messages").scrollHeight;
+          markSeen(id);
+        });
+        $("msgInput").focus();
+      }
+
+      $("closeChat").addEventListener("click", () => {
+        $("chat").hidden = true;
+        if (stopThread) stopThread();
+        openId = null;
+        renderThreads();
+      });
+
+      $("composer").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = $("msgInput").value.trim();
+        if (!text || !openId) return;
+        $("msgInput").value = "";
+        await db.push(db.ref(database, `chats/${openId}/messages`), { from: "erik", text, ts: Date.now() });
+        await db.set(db.ref(database, `chats/${openId}/updated`), Date.now());
+      });
+
+      $("googleBtn").addEventListener("click", async () => {
+        $("loginErr").textContent = "";
+        const provider = new authMod.GoogleAuthProvider();
+        try {
+          await authMod.signInWithPopup(auth, provider);
+        } catch (e) {
+          if (e.code === "auth/popup-blocked") await authMod.signInWithRedirect(auth, provider);
+          else if (e.code !== "auth/popup-closed-by-user") $("loginErr").textContent = "Sign-in failed. Are you even Erik?";
+        }
+      });
+
+      $("signOut").addEventListener("click", () => authMod.signOut(auth));
+
+      authMod.onAuthStateChanged(auth, (user) => {
+        $("login").hidden = !!user;
+        $("threads").hidden = !user;
+        $("signOut").hidden = !user;
+        if (!user) { $("status").textContent = ""; return; }
+        $("status").textContent = "Loading…";
+        db.onValue(db.ref(database, "chats"), (snap) => {
+          chats = snap.val() || {};
+          if (!openId) renderThreads();
+        }, () => {
+          // Not Erik (or the rules don't have his UID yet): show the UID so it can be pasted into the rules.
+          $("status").textContent = `This Google account isn't Erik's. If it is, put this UID in the database rules: ${user.uid}`;
+        });
+      });
+    }
+  </script>
+</body>
+</html>
