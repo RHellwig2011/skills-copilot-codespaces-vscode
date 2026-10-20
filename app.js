@@ -7,7 +7,7 @@ const PROFILES = [
     job: "📍 Round Valley, NJ",
     bio: "Single. Like, extremely single. I'm always cold, so you'd basically be a full-time space heater.",
     roast: "Has been \"about to get back out there\" since 2019.",
-    tags: ["👓 Glasses", "💜 Purple", "🐸 Toads", "🚗 Drives red"],
+    tags: ["👓 Glasses", "👱 Golden blonde", "💜 Purple", "🐸 Toads", "🚗 Drives red"],
   },
   {
     photo: "photos/eric2.jpg", emoji: "📸", color: "#e11d48",
@@ -53,9 +53,9 @@ const PROFILES = [
     photo: "photos/eric7.jpg", emoji: "🛡️", color: "#4338ca",
     name: "Eric", age: "26",
     job: "🧬 Scandinavian · Scottish · Dutch",
-    bio: "Basically a Viking in a kilt wearing wooden clogs. Built for cold weather, yet somehow always cold.",
+    bio: "Basically a Viking in a kilt wearing wooden clogs. Rocks the golden blonde hair of his ancestors, who used it to terrify villages. Built for cold weather, yet somehow always cold.",
     roast: "Descended from Vikings. Needs a hoodie in July.",
-    tags: ["🪓 Viking", "🏴 Kilt-adjacent", "👞 Clogs"],
+    tags: ["👱 Golden blonde", "🪓 Viking", "🏴 Kilt-adjacent", "👞 Clogs"],
   },
   {
     photo: "photos/eric8.jpg", emoji: "🦇", color: "#6d28d9",
