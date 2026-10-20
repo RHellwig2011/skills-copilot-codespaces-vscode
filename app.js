@@ -210,7 +210,6 @@ function swipe(dir) {
   }, 380);
 }
 
-// Every like (or super like) is a match. Nope just moves on.
 function updateMatchCount() {
   $("matchCount").textContent = `💘 ${matches}`;
   $("matchCount").title = `${matches} match${matches === 1 ? "" : "es"}`;
@@ -222,6 +221,7 @@ function addBonusMatch() {
   updateMatchCount();
 }
 
+// Every like (or super like) is a match. Nope just moves on.
 function showMatch(dir) {
   matches++;
   updateMatchCount();
