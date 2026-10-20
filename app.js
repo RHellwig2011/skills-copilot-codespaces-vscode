@@ -7,9 +7,9 @@ const PROFILES = [
     photo: PHOTO_BASE + "eric1.jpg", emoji: "🤓", color: "#7b2ff7",
     name: "Erik", age: "26", ageNote: "(old man)",
     job: "📍 Round Valley, NJ",
-    bio: "Single. Like, extremely single. I'm always cold, so you'd basically be a full-time space heater.",
+    bio: "Single. Like, extremely single. I'm always cold, and low humidity makes me sniffle, so you'd basically be a full-time space heater and humidifier.",
     roast: "Has been \"about to get back out there\" since 2019.",
-    tags: ["👓 Glasses", "👱 Golden blonde", "💜 Purple", "🐸 Toads", "🚗 Drives red"],
+    tags: ["👓 Glasses", "👱 Golden blonde", "💜 Purple", "🐸 Toads", "🚗 Drives red", "🤧 Humidity-sensitive"],
   },
   {
     photo: PHOTO_BASE + "eric2.jpg", emoji: "📸", color: "#e11d48",
@@ -47,9 +47,9 @@ const PROFILES = [
     photo: PHOTO_BASE + "eric6.jpg", emoji: "💊", color: "#0891b2",
     name: "Erik", age: "26",
     job: "🎓 Education & 💊 Pharmaceuticals",
-    bio: "I can teach you something AND tell you what not to mix it with. Brains and benefits.",
+    bio: "I can teach you something AND tell you what not to mix it with. Brains and benefits. Favorite food spot? Open to suggestions. Same goes for women. Some call it desperate. I call it flexible.",
     roast: "Knows every drug interaction on the planet. Still can't figure out flirting.",
-    tags: ["📚 Smart", "💊 Pharma bro (the nice kind)"],
+    tags: ["📚 Smart", "💊 Pharma bro (the nice kind)", "🍽️ Open to suggestions"],
   },
   {
     photo: PHOTO_BASE + "eric7.jpg", emoji: "🛡️", color: "#4338ca",
@@ -80,6 +80,8 @@ const ERIK_REPLIES = [
   "You must be purple, because you're my favorite color.",
   "yes",
   "Want to go for a ride in the red car? I'll crank the heat.",
+  "Where do you want to eat? I'm open to suggestions. I'm open to pretty much anything, honestly.",
+  "Sorry, sniffling. The humidity is like 30% in here.",
   "I'm not saying we're soulmates, but there's literally no one else on this app.",
 ];
 
