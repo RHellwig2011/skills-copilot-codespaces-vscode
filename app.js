@@ -67,7 +67,7 @@ const PROFILES = [
   },
 ];
 
-const ERIC_REPLIES = [
+const ERIK_REPLIES = [
   "yes",
   "Hey there 😎 Are you a toad? Because you make my heart hop.",
   "Do you have a blanket? Because I'm cold. Also, hi.",
@@ -197,7 +197,7 @@ function swipe(dir) {
   }, 380);
 }
 
-// Auto-match: every swipe is a match, including the left ones.
+// Every like (or super like) is a match. Nope just moves on.
 function showMatch(dir) {
   matches++;
   $("matchCount").textContent = `${matches} match${matches === 1 ? "" : "es"}`;
@@ -246,7 +246,7 @@ function erikSays() {
   const typing = addMsg("Erik is typing…", "them typing");
   setTimeout(() => {
     typing.remove();
-    addMsg(ERIC_REPLIES[replyIndex++ % ERIC_REPLIES.length], "them");
+    addMsg(ERIK_REPLIES[replyIndex++ % ERIK_REPLIES.length], "them");
   }, 900 + Math.random() * 900);
 }
 
