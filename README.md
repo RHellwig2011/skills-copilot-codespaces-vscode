@@ -1,6 +1,6 @@
 # Erikder 🔥🐸
 
-A Tinder-style joke site with exactly one option: Erik. Women get auto-matched on every swipe (yes, even left).
+A Tinder-style joke site with exactly one option: Erik. Women get auto-matched on every right swipe; "nope" just shows the next Erik.
 
 - `index.html`, `style.css`, `app.js` — the whole site, no build step
 - `photos/` — drop Erik's photos here (see `photos/README.md`)
