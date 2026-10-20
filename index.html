@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ericder</title>
+  <meta name="description" content="The dating app with exactly one option.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Splash: who are you? -->
+  <section id="splash" class="screen active">
+    <div class="logo">🔥 Eric<span>der</span></div>
+    <p class="tagline">The dating app with <b>exactly one</b> option.</p>
+    <p class="sub">Over 1 profiles to choose from!</p>
+    <p class="question">I am a…</p>
+    <div class="choices">
+      <button class="btn primary" data-gender="woman">Woman</button>
+      <button class="btn" data-gender="man">Man</button>
+      <button class="btn" data-gender="other">Other</button>
+    </div>
+    <p class="fine">By continuing you agree to match with Eric. This is not optional.</p>
+  </section>
+
+  <!-- Rejection for non-women -->
+  <section id="nope" class="screen">
+    <div class="big-emoji">🐸🚫</div>
+    <h2>Sorry, Eric is saving himself.</h2>
+    <p>Eric is only accepting applications from women at this time.<br>He is, however, open to being your friend from a distance, in the dark.</p>
+    <button class="btn primary" id="lied">Wait, I misclicked. I'm a woman.</button>
+    <button class="btn ghost" id="backToStart">Back</button>
+  </section>
+
+  <!-- Swipe deck -->
+  <section id="app" class="screen">
+    <header class="topbar">
+      <div class="logo small">🔥 Eric<span>der</span></div>
+      <div class="matches-pill" id="matchCount">0 matches</div>
+    </header>
+    <div class="deck" id="deck"></div>
+    <div class="actions">
+      <button class="round nope" id="btnNope" aria-label="Nope">✕</button>
+      <button class="round super" id="btnSuper" aria-label="Super like">★</button>
+      <button class="round like" id="btnLike" aria-label="Like">♥</button>
+    </div>
+  </section>
+
+  <!-- Out of profiles -->
+  <section id="done" class="screen">
+    <div class="big-emoji">🐸💜</div>
+    <h2>You've seen every Eric.</h2>
+    <p>Good news: there are no other men on this app. You matched with all of them. They are all Eric.</p>
+    <button class="btn primary" id="openChat">Message Eric</button>
+    <button class="btn ghost" id="restart">See the Erics again</button>
+  </section>
+
+  <!-- Match overlay -->
+  <div id="match" class="overlay" hidden>
+    <div class="match-inner">
+      <h1 class="its-a-match">It's a Match!</h1>
+      <p id="matchText">You and Eric liked each other.</p>
+      <div class="match-photos">
+        <div class="mp you">🙋‍♀️</div>
+        <div class="mp eric" id="matchEric"></div>
+      </div>
+      <p class="match-note" id="matchNote"></p>
+      <button class="btn primary" id="sendMsg">Send a message</button>
+      <button class="btn ghost" id="keepSwiping">Keep swiping (it's still him)</button>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat" class="overlay" hidden>
+    <div class="chat-box">
+      <header class="chat-head">
+        <button class="icon" id="closeChat" aria-label="Close">‹</button>
+        <div class="chat-avatar" id="chatAvatar"></div>
+        <div>
+          <div class="chat-name">Eric</div>
+          <div class="chat-status">Online · in the dark</div>
+        </div>
+      </header>
+      <div class="messages" id="messages"></div>
+      <form class="composer" id="composer">
+        <input id="msgInput" autocomplete="off" placeholder="Say something to Eric…">
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
