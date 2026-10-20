@@ -101,6 +101,9 @@ h2 { margin: 0; }
 .card h3 span { font-weight: 400; }
 .card .job { margin: 4px 0 8px; opacity: .9; }
 .card .bio { margin: 0 0 10px; line-height: 1.4; }
+.card .roast { margin: 0 0 10px; font-size: .85rem; font-style: italic; opacity: .85; }
+.match-roast { color: #fde68a; font-weight: 700; max-width: 300px; margin: 0; }
+.msg.system { font-size: .85rem; color: var(--muted); background: transparent; border: 1px dashed var(--line); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); padding: 4px 10px; border-radius: 999px; font-size: .8rem; }
 

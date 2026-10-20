@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "chats": {
+      ".read": "auth != null && auth.uid === 'PASTE_ERIC_UID'",
+      "$chatId": {
+        ".read": true,
+        "name": {
+          ".write": "!data.exists() || newData.val() === data.val()",
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+        "updated": {
+          ".write": true,
+          ".validate": "newData.isNumber()"
+        },
+        "messages": {
+          "$msgId": {
+            ".write": "!data.exists() && (newData.child('from').val() === 'her' || (auth != null && auth.uid === 'PASTE_ERIC_UID'))",
+            ".validate": "newData.hasChildren(['from', 'text', 'ts']) && (newData.child('from').val() === 'her' || newData.child('from').val() === 'eric') && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('ts').isNumber()"
+          }
+        }
+      }
+    }
+  }
+}

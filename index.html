@@ -65,6 +65,7 @@
         <div class="mp eric" id="matchEric"></div>
       </div>
       <p class="match-note" id="matchNote"></p>
+      <p class="match-roast" id="matchRoast"></p>
       <button class="btn primary" id="sendMsg">Send a message</button>
       <button class="btn ghost" id="keepSwiping">Keep swiping (it's still him)</button>
     </div>
@@ -78,7 +79,7 @@
         <div class="chat-avatar" id="chatAvatar"></div>
         <div>
           <div class="chat-name">Eric</div>
-          <div class="chat-status">Online · in the dark</div>
+          <div class="chat-status" id="chatStatus">Online · in the dark</div>
         </div>
       </header>
       <div class="messages" id="messages"></div>
@@ -90,5 +91,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script type="module" src="live-chat.js"></script>
 </body>
 </html>
