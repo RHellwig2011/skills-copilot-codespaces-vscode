@@ -1,8 +1,10 @@
 // Every profile is Erik. Drop photos into photos/ named eric1.jpg, eric2.jpg, ...
 // A profile whose photo is missing shows its emoji placeholder instead.
+// photo-base.js can point PHOTO_BASE somewhere else (the deployed site loads photos from GitHub).
+const PHOTO_BASE = window.PHOTO_BASE || "photos/";
 const PROFILES = [
   {
-    photo: "photos/eric1.jpg", emoji: "🤓", color: "#7b2ff7",
+    photo: PHOTO_BASE + "eric1.jpg", emoji: "🤓", color: "#7b2ff7",
     name: "Erik", age: "26", ageNote: "(old man)",
     job: "📍 Round Valley, NJ",
     bio: "Single. Like, extremely single. I'm always cold, so you'd basically be a full-time space heater.",
@@ -10,7 +12,7 @@ const PROFILES = [
     tags: ["👓 Glasses", "👱 Golden blonde", "💜 Purple", "🐸 Toads", "🚗 Drives red"],
   },
   {
-    photo: "photos/eric2.jpg", emoji: "📸", color: "#e11d48",
+    photo: PHOTO_BASE + "eric2.jpg", emoji: "📸", color: "#e11d48",
     name: "Erik", age: "26",
     job: "📷 Former Walgreens photo department",
     bio: "I've developed a lot of photos. Now I'm ready to develop feelings. Your 4x6 prints are ready for pickup.",
@@ -18,7 +20,7 @@ const PROFILES = [
     tags: ["🖨️ Glossy or matte?", "🧾 1-hour service"],
   },
   {
-    photo: "photos/eric3.jpg", emoji: "🐸", color: "#16a34a",
+    photo: PHOTO_BASE + "eric3.jpg", emoji: "🐸", color: "#16a34a",
     name: "Erik", age: "26",
     job: "🐸 Professional toad enjoyer",
     bio: "Looking for someone who loves toads as much as I do. Bonus points if you are, in fact, a toad. I will not kiss you to find out.",
@@ -26,7 +28,7 @@ const PROFILES = [
     tags: ["🐸 Toads", "🌧️ Wet weather", "🪨 Rocks"],
   },
   {
-    photo: "photos/eric4.jpg", emoji: "🌑", color: "#1f2937",
+    photo: PHOTO_BASE + "eric4.jpg", pos: "center top", emoji: "🌑", color: "#1f2937",
     name: "Erik", age: "26",
     job: "🛋️ Hobby: sitting at home in the dark",
     bio: "Was a total party animal in college. Now the party is just me, sitting at home in the dark. Netflix and chill, minus the Netflix, minus the lights. Wrapped in a blanket because I'm cold.",
@@ -34,7 +36,7 @@ const PROFILES = [
     tags: ["🎉 Ex-party animal", "🌑 Dark mode IRL", "🧣 Blankets", "🏠 Homebody"],
   },
   {
-    photo: "photos/eric5.jpg", emoji: "🏈", color: "#b45309",
+    photo: PHOTO_BASE + "eric5.jpg", emoji: "🏈", color: "#b45309",
     name: "Erik", age: "26",
     job: "👑 Overlord of the freshman football players at Immaculata",
     bio: "They fear me. They respect me. Some of them are 14. My kingdom is vast and smells like a locker room.",
@@ -42,7 +44,7 @@ const PROFILES = [
     tags: ["👑 Overlord", "🏈 Football", "📣 Leadership"],
   },
   {
-    photo: "photos/eric6.jpg", emoji: "💊", color: "#0891b2",
+    photo: PHOTO_BASE + "eric6.jpg", emoji: "💊", color: "#0891b2",
     name: "Erik", age: "26",
     job: "🎓 Education & 💊 Pharmaceuticals",
     bio: "I can teach you something AND tell you what not to mix it with. Brains and benefits.",
@@ -50,7 +52,7 @@ const PROFILES = [
     tags: ["📚 Smart", "💊 Pharma bro (the nice kind)"],
   },
   {
-    photo: "photos/eric7.jpg", emoji: "🛡️", color: "#4338ca",
+    photo: PHOTO_BASE + "eric7.jpg", emoji: "🛡️", color: "#4338ca",
     name: "Erik", age: "26",
     job: "🧬 Scandinavian · Scottish · Dutch",
     bio: "Basically a Viking in a kilt wearing wooden clogs. Rocks the golden blonde hair of his ancestors, who used it to terrify villages. Built for cold weather, yet somehow always cold.",
@@ -58,7 +60,7 @@ const PROFILES = [
     tags: ["👱 Golden blonde", "🪓 Viking", "🏴 Kilt-adjacent", "👞 Clogs"],
   },
   {
-    photo: "photos/eric8.jpg", emoji: "🦇", color: "#6d28d9",
+    photo: PHOTO_BASE + "eric8.jpg", emoji: "🦇", color: "#6d28d9",
     name: "Erik", age: "26",
     job: "🏫 Del Val High School alum",
     bio: "Hasn't peaked yet. The best is literally still coming. \"Once I was a boy, I know I'm a bat.\" Favorite quote: \"yes.\"",
@@ -109,6 +111,7 @@ function paintPhoto(el, p, big) {
   const img = new Image();
   img.onload = () => {
     el.style.backgroundImage = `url("${p.photo}")`;
+    if (p.pos) el.style.backgroundPosition = p.pos;
     el.textContent = "";
   };
   img.onerror = () => {
