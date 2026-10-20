@@ -29,9 +29,9 @@ const PROFILES = [
     photo: "photos/eric4.jpg", emoji: "🌑", color: "#1f2937",
     name: "Eric", age: "26",
     job: "🛋️ Hobby: sitting at home in the dark",
-    bio: "Netflix and chill, minus the Netflix, minus the lights. Just two people, sitting. In the dark. Wrapped in a blanket because I'm cold.",
+    bio: "Was a total party animal in college. Now the party is just me, sitting at home in the dark. Netflix and chill, minus the Netflix, minus the lights. Wrapped in a blanket because I'm cold.",
     roast: "Turns the lights off to save energy. And so he can't see his DMs, which are empty.",
-    tags: ["🌑 Dark mode IRL", "🧣 Blankets", "🏠 Homebody"],
+    tags: ["🎉 Ex-party animal", "🌑 Dark mode IRL", "🧣 Blankets", "🏠 Homebody"],
   },
   {
     photo: "photos/eric5.jpg", emoji: "🏈", color: "#b45309",
