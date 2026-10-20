@@ -68,6 +68,12 @@ h2 { margin: 0; }
 /* App */
 #app { justify-content: flex-start; padding-top: 12px; }
 .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.msgs-btn { font-size: 1.5rem; padding: 0; }
+.signin { display: flex; justify-content: center; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.signin[hidden], .composer[hidden] { display: none; }
+.btn.google { display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: #1f1f1f; border-color: #dadce0; }
+.btn.google .g { font-weight: 900; color: #4285f4; font-size: 1.2rem; }
 .matches-pill { background: var(--grad); color: #fff; font-weight: 700; font-size: .85rem; padding: 6px 12px; border-radius: 999px; }
 
 .deck { position: relative; width: 100%; flex: 1; max-height: 620px; margin-top: 8px; }

@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Eric's Inbox</title>
+  <title>Erik's Inbox</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐸</text></svg>">
   <link rel="stylesheet" href="style.css">
   <style>
     body { overflow: auto; }
     .inbox { max-width: 480px; margin: 0 auto; padding: 16px; }
-    .inbox form.login { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 40px; }
+    .inbox .login { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 40px; }
     .inbox input { font: inherit; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); width: 100%; max-width: 280px; }
     .thread { display: flex; justify-content: space-between; gap: 12px; padding: 14px 4px; border-bottom: 1px solid var(--line); cursor: pointer; text-align: left; }
     .thread .who { font-weight: 700; }
@@ -22,16 +22,15 @@
 </head>
 <body>
   <main class="inbox" id="inbox">
-    <div class="logo small" style="text-align:center">🔥 Eric<span>der</span> · Inbox</div>
-    <form class="login" id="login" hidden>
-      <p>Eric only. Everyone else, go swipe.</p>
-      <input id="email" type="email" placeholder="Email" autocomplete="username" required>
-      <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
-      <button class="btn primary" type="submit">Log in</button>
+    <div class="logo small" style="text-align:center">🔥 Erik<span>der</span> · Inbox</div>
+    <div class="login" id="login" hidden>
+      <p>Erik only. Everyone else, go swipe.</p>
+      <button class="btn primary" id="googleBtn" type="button">Sign in with Google</button>
       <p class="err" id="loginErr"></p>
-    </form>
+    </div>
     <div id="threads" hidden></div>
     <p class="empty" id="status">Loading…</p>
+    <p style="text-align:center"><button class="btn ghost" id="signOut" hidden>Sign out</button></p>
   </main>
 
   <div id="chat" class="overlay" hidden>
@@ -43,7 +42,7 @@
       </header>
       <div class="messages" id="messages"></div>
       <form class="composer" id="composer">
-        <input id="msgInput" autocomplete="off" placeholder="Reply as Eric…">
+        <input id="msgInput" autocomplete="off" placeholder="Reply as Erik…">
         <button class="btn primary" type="submit">Send</button>
       </form>
     </div>
@@ -85,7 +84,7 @@
           who.textContent = c.name || "Mystery woman";
           const lastEl = document.createElement("div");
           lastEl.className = "last";
-          lastEl.textContent = last ? (last.from === "eric" ? "You: " : "") + last.text : "";
+          lastEl.textContent = last ? (last.from === "erik" ? "You: " : "") + last.text : "";
           text.append(who, lastEl);
           row.append(text);
           if (last && last.from === "her" && last.ts > seen(id)) {
@@ -97,7 +96,7 @@
           $("threads").append(row);
         }
         const unread = $("threads").querySelectorAll(".dot").length;
-        document.title = unread ? `(${unread}) Eric's Inbox` : "Eric's Inbox";
+        document.title = unread ? `(${unread}) Erik's Inbox` : "Erik's Inbox";
       }
 
       function openThread(id) {
@@ -110,7 +109,7 @@
           snap.forEach((m) => {
             const v = m.val();
             const el = document.createElement("div");
-            el.className = "msg " + (v.from === "eric" ? "me" : "them");
+            el.className = "msg " + (v.from === "erik" ? "me" : "them");
             el.textContent = v.text;
             $("messages").append(el);
           });
@@ -132,30 +131,35 @@
         const text = $("msgInput").value.trim();
         if (!text || !openId) return;
         $("msgInput").value = "";
-        await db.push(db.ref(database, `chats/${openId}/messages`), { from: "eric", text, ts: Date.now() });
+        await db.push(db.ref(database, `chats/${openId}/messages`), { from: "erik", text, ts: Date.now() });
         await db.set(db.ref(database, `chats/${openId}/updated`), Date.now());
       });
 
-      $("login").addEventListener("submit", async (e) => {
-        e.preventDefault();
+      $("googleBtn").addEventListener("click", async () => {
         $("loginErr").textContent = "";
+        const provider = new authMod.GoogleAuthProvider();
         try {
-          await authMod.signInWithEmailAndPassword(auth, $("email").value, $("password").value);
-        } catch {
-          $("loginErr").textContent = "Wrong email or password. Are you even Eric?";
+          await authMod.signInWithPopup(auth, provider);
+        } catch (e) {
+          if (e.code === "auth/popup-blocked") await authMod.signInWithRedirect(auth, provider);
+          else if (e.code !== "auth/popup-closed-by-user") $("loginErr").textContent = "Sign-in failed. Are you even Erik?";
         }
       });
+
+      $("signOut").addEventListener("click", () => authMod.signOut(auth));
 
       authMod.onAuthStateChanged(auth, (user) => {
         $("login").hidden = !!user;
         $("threads").hidden = !user;
+        $("signOut").hidden = !user;
         if (!user) { $("status").textContent = ""; return; }
         $("status").textContent = "Loading…";
         db.onValue(db.ref(database, "chats"), (snap) => {
           chats = snap.val() || {};
           if (!openId) renderThreads();
         }, () => {
-          $("status").textContent = "This account can't read the inbox. Check that Eric's UID is in the database rules.";
+          // Not Erik (or the rules don't have his UID yet): show the UID so it can be pasted into the rules.
+          $("status").textContent = `This Google account isn't Erik's. If it is, put this UID in the database rules: ${user.uid}`;
         });
       });
     }

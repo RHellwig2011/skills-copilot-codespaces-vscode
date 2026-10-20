@@ -1,4 +1,4 @@
-# Eric's photos
+# Erik's photos
 
 Put photos here named `eric1.jpg` through `eric8.jpg`, one per profile card:
 

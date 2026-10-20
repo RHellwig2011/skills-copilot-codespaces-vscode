@@ -1,21 +1,21 @@
 {
   "rules": {
     "chats": {
-      ".read": "auth != null && auth.uid === 'PASTE_ERIC_UID'",
-      "$chatId": {
-        ".read": true,
+      ".read": "auth != null && auth.uid === 'PASTE_ERIK_UID'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'PASTE_ERIK_UID')",
         "name": {
-          ".write": "!data.exists() || newData.val() === data.val()",
+          ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
         },
         "updated": {
-          ".write": true,
+          ".write": "auth != null && (auth.uid === $uid || auth.uid === 'PASTE_ERIK_UID')",
           ".validate": "newData.isNumber()"
         },
         "messages": {
           "$msgId": {
-            ".write": "!data.exists() && (newData.child('from').val() === 'her' || (auth != null && auth.uid === 'PASTE_ERIC_UID'))",
-            ".validate": "newData.hasChildren(['from', 'text', 'ts']) && (newData.child('from').val() === 'her' || newData.child('from').val() === 'eric') && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('ts').isNumber()"
+            ".write": "!data.exists() && auth != null && ((auth.uid === $uid && newData.child('from').val() === 'her') || (auth.uid === 'PASTE_ERIK_UID' && newData.child('from').val() === 'erik'))",
+            ".validate": "newData.hasChildren(['from', 'text', 'ts']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('ts').isNumber()"
           }
         }
       }

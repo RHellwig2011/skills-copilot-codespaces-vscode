@@ -1,9 +1,9 @@
-// Every profile is Eric. Drop photos into photos/ named eric1.jpg, eric2.jpg, ...
+// Every profile is Erik. Drop photos into photos/ named eric1.jpg, eric2.jpg, ...
 // A profile whose photo is missing shows its emoji placeholder instead.
 const PROFILES = [
   {
     photo: "photos/eric1.jpg", emoji: "🤓", color: "#7b2ff7",
-    name: "Eric", age: "26", ageNote: "(old man)",
+    name: "Erik", age: "26", ageNote: "(old man)",
     job: "📍 Round Valley, NJ",
     bio: "Single. Like, extremely single. I'm always cold, so you'd basically be a full-time space heater.",
     roast: "Has been \"about to get back out there\" since 2019.",
@@ -11,7 +11,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric2.jpg", emoji: "📸", color: "#e11d48",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "📷 Former Walgreens photo department",
     bio: "I've developed a lot of photos. Now I'm ready to develop feelings. Your 4x6 prints are ready for pickup.",
     roast: "Will print your photos in one hour. Will text you back in three to five business weeks.",
@@ -19,7 +19,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric3.jpg", emoji: "🐸", color: "#16a34a",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "🐸 Professional toad enjoyer",
     bio: "Looking for someone who loves toads as much as I do. Bonus points if you are, in fact, a toad. I will not kiss you to find out.",
     roast: "Has more photos of toads on his phone than photos of friends. Allegedly.",
@@ -27,7 +27,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric4.jpg", emoji: "🌑", color: "#1f2937",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "🛋️ Hobby: sitting at home in the dark",
     bio: "Was a total party animal in college. Now the party is just me, sitting at home in the dark. Netflix and chill, minus the Netflix, minus the lights. Wrapped in a blanket because I'm cold.",
     roast: "Turns the lights off to save energy. And so he can't see his DMs, which are empty.",
@@ -35,7 +35,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric5.jpg", emoji: "🏈", color: "#b45309",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "👑 Overlord of the freshman football players at Immaculata",
     bio: "They fear me. They respect me. Some of them are 14. My kingdom is vast and smells like a locker room.",
     roast: "Commands an army of 14-year-olds. Still gets nervous ordering at Wawa.",
@@ -43,7 +43,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric6.jpg", emoji: "💊", color: "#0891b2",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "🎓 Education & 💊 Pharmaceuticals",
     bio: "I can teach you something AND tell you what not to mix it with. Brains and benefits.",
     roast: "Knows every drug interaction on the planet. Still can't figure out flirting.",
@@ -51,7 +51,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric7.jpg", emoji: "🛡️", color: "#4338ca",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "🧬 Scandinavian · Scottish · Dutch",
     bio: "Basically a Viking in a kilt wearing wooden clogs. Rocks the golden blonde hair of his ancestors, who used it to terrify villages. Built for cold weather, yet somehow always cold.",
     roast: "Descended from Vikings. Needs a hoodie in July.",
@@ -59,7 +59,7 @@ const PROFILES = [
   },
   {
     photo: "photos/eric8.jpg", emoji: "🦇", color: "#6d28d9",
-    name: "Eric", age: "26",
+    name: "Erik", age: "26",
     job: "🏫 Del Val High School alum",
     bio: "Hasn't peaked yet. The best is literally still coming. \"Once I was a boy, I know I'm a bat.\" Favorite quote: \"yes.\"",
     roast: "Hasn't peaked yet. Experts say any decade now.",
@@ -83,10 +83,10 @@ const ERIC_REPLIES = [
 
 // Shown on the match screen, one per match.
 const MATCH_ROASTS = [
-  "Wow, an actual woman. Eric's heart rate just hit 70.",
+  "Wow, an actual woman. Erik's heart rate just hit 70.",
   "Statistically, you're his first match this year. Congrats?",
   "He's already told his mom about you.",
-  "Eric would stand up and cheer, but he's sitting in the dark.",
+  "Erik would stand up and cheer, but he's sitting in the dark.",
   "This is the most attention he's gotten since the Walgreens photo kiosk broke.",
   "He's putting on a second hoodie for the occasion.",
   "Don't worry, he only practiced his \"hey\" 40 times.",
@@ -192,7 +192,8 @@ function swipe(dir) {
   deckIndex++;
   setTimeout(() => {
     renderDeck();
-    showMatch(dir);
+    if (dir === "right") showMatch(dir);
+    else if (deckIndex >= PROFILES.length) show("done");
   }, 380);
 }
 
@@ -201,14 +202,13 @@ function showMatch(dir) {
   matches++;
   $("matchCount").textContent = `${matches} match${matches === 1 ? "" : "es"}`;
   const notes = {
-    right: "Eric swiped right on you before you even opened the app.",
-    super: "A Super Like! Eric is blushing. Or cold. Hard to tell.",
-    left: "You swiped left. Eric doesn't believe in that. Matched anyway. 💜",
+    right: "Erik swiped right on you before you even opened the app.",
+    super: "A Super Like! Erik is blushing. Or cold. Hard to tell.",
   };
   $("matchNote").textContent = notes[dir];
   $("matchRoast").textContent = MATCH_ROASTS[(matches - 1) % MATCH_ROASTS.length];
-  $("matchText").textContent = `You and Eric (#${deckIndex} of ${PROFILES.length}) liked each other.`;
-  paintPhoto($("matchEric"), lastMatched, false);
+  $("matchText").textContent = `You and Erik (#${deckIndex} of ${PROFILES.length}) liked each other.`;
+  paintPhoto($("matchErik"), lastMatched, false);
   $("match").hidden = false;
   confetti();
 }
@@ -242,41 +242,58 @@ function addMsg(text, who) {
   return m;
 }
 
-function ericSays() {
-  const typing = addMsg("Eric is typing…", "them typing");
+function erikSays() {
+  const typing = addMsg("Erik is typing…", "them typing");
   setTimeout(() => {
     typing.remove();
     addMsg(ERIC_REPLIES[replyIndex++ % ERIC_REPLIES.length], "them");
   }, 900 + Math.random() * 900);
 }
 
-// With live chat set up (see live-chat.js), messages go to the real Eric and his
-// replies show up here. Without it, joke-bot Eric answers instead.
-let liveStarted = false;
+// With live chat set up (see live-chat.js), women sign in with Google, messages go
+// to the real Erik, and his replies show up here. Without it, joke-bot Erik answers.
+let stopMessages = null;
 
-function startLiveChat() {
-  liveStarted = true;
-  $("chatStatus").textContent = "The real Eric · replies when his eyes adjust to the light";
-  window.liveChat.onMessages((msgs) => {
+function showLiveChat(user) {
+  if (stopMessages) { stopMessages(); stopMessages = null; }
+  $("messages").replaceChildren();
+  $("composer").hidden = !user;
+  $("signin").hidden = !!user;
+  $("chatStatus").textContent = "The real Erik · replies when his eyes adjust to the light";
+  if (!user) {
+    addMsg("Sign in with Google to message the real Erik. You can come back anytime, on any device, to see his replies.", "them system");
+    return;
+  }
+  stopMessages = window.liveChat.onMessages((msgs) => {
     $("messages").replaceChildren();
-    addMsg("Messages go to the real Eric. He'll reply here, so come back to this site later. Yes, he's actually going to read this.", "them system");
-    if (!window.liveChat.name()) addMsg("First things first: what's your name?", "them system");
-    msgs.forEach((m) => addMsg(m.text, m.from === "eric" ? "them" : "me"));
+    addMsg(`Signed in as ${user.displayName || user.email}. Messages go to the real Erik. Yes, he's actually going to read this.`, "them system");
+    msgs.forEach((m) => addMsg(m.text, m.from === "erik" ? "them" : "me"));
   });
-  $("msgInput").placeholder = window.liveChat.name() ? "Say something to Eric…" : "Your name";
 }
 
+let liveStarted = false;
 function openChat() {
   $("match").hidden = true;
   paintPhoto($("chatAvatar"), lastMatched, false);
   $("chat").hidden = false;
   if (window.liveChat) {
-    if (!liveStarted) startLiveChat();
+    if (!liveStarted) {
+      liveStarted = true;
+      window.liveChat.onUser(showLiveChat);
+    }
   } else if (!$("messages").children.length) {
-    ericSays();
+    erikSays();
   }
-  $("msgInput").focus();
+  if (!$("composer").hidden) $("msgInput").focus();
 }
+
+$("googleBtn").addEventListener("click", async () => {
+  try {
+    await window.liveChat.signIn();
+  } catch {
+    addMsg("Google sign-in didn't work. Try again?", "them system");
+  }
+});
 
 $("composer").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -285,20 +302,14 @@ $("composer").addEventListener("submit", async (e) => {
   $("msgInput").value = "";
   if (window.liveChat) {
     try {
-      if (!window.liveChat.name()) {
-        await window.liveChat.setName(text.slice(0, 40));
-        $("msgInput").placeholder = "Say something to Eric…";
-        addMsg(`Nice to meet you, ${text.slice(0, 40)}. Now say something to Eric.`, "them system");
-      } else {
-        await window.liveChat.send(text.slice(0, 1000));
-      }
+      await window.liveChat.send(text.slice(0, 1000));
     } catch {
-      addMsg("That didn't send. Eric's Wi-Fi is probably also sitting in the dark. Try again.", "them system");
+      addMsg("That didn't send. Erik's Wi-Fi is probably also sitting in the dark. Try again.", "them system");
     }
     return;
   }
   addMsg(text, "me");
-  ericSays();
+  erikSays();
 });
 
 $("closeChat").addEventListener("click", () => {
@@ -332,4 +343,5 @@ $("btnSuper").addEventListener("click", () => {
 $("keepSwiping").addEventListener("click", closeMatch);
 $("sendMsg").addEventListener("click", openChat);
 $("openChat").addEventListener("click", openChat);
+$("myMsgs").addEventListener("click", openChat);
 $("restart").addEventListener("click", startSwiping);
