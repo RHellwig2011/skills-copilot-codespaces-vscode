@@ -44,7 +44,7 @@
     <div class="deck" id="deck"></div>
     <div class="actions">
       <button class="round nope" id="btnNope" aria-label="Nope">✕</button>
-      <button class="round super" id="btnSuper" aria-label="Super like">★</button>
+      <button class="round super" id="btnSuper" aria-label="Fus Ro Dah (super like)" title="Fus Ro Dah">🐉</button>
       <button class="round like" id="btnLike" aria-label="Like">♥</button>
     </div>
   </section>
@@ -69,6 +69,11 @@
       </div>
       <p class="match-note" id="matchNote"></p>
       <p class="match-roast" id="matchRoast"></p>
+      <div class="compat">
+        <div class="compat-label">Compatibility</div>
+        <div class="compat-bar"><div class="compat-fill" id="compatFill"></div></div>
+        <div class="compat-num" id="compatNum">0%</div>
+      </div>
       <button class="btn primary" id="sendMsg">Send a message</button>
       <button class="btn ghost" id="keepSwiping">Keep swiping (it's still him)</button>
     </div>
@@ -85,6 +90,10 @@
           <div class="chat-status" id="chatStatus">Online · in the dark</div>
         </div>
       </header>
+      <div class="unlocks" id="unlocks">
+        <div class="unlock" id="instaUnlock"></div>
+        <div class="unlock" id="snapUnlock"></div>
+      </div>
       <div class="messages" id="messages"></div>
       <div class="signin" id="signin" hidden>
         <button class="btn google" id="googleBtn" type="button"><span class="g">G</span> Sign in with Google</button>
@@ -95,6 +104,25 @@
       </form>
     </div>
   </div>
+
+  <!-- Skyrim-style lockpicking, blocks the deck partway through -->
+  <div id="lockpick" class="overlay" hidden>
+    <div class="lp-inner">
+      <h2 class="lp-title">This Erik is locked.</h2>
+      <p class="lp-sub">Lock level: <b>Expert</b> · Pick it to keep swiping</p>
+      <div class="lp-lock" id="lpLock">
+        <div class="lp-cylinder" id="lpCylinder"><div class="lp-keyhole"></div></div>
+        <div class="lp-pick" id="lpPick"></div>
+      </div>
+      <input type="range" id="lpAngle" min="0" max="180" value="90" aria-label="Lockpick angle">
+      <p class="lp-hint">Slide to move the lockpick, then turn the lock.<br>The further the lock turns, the closer you are.</p>
+      <button class="btn primary" id="lpTurn">Turn lock</button>
+      <p class="lp-status" id="lpStatus"></p>
+      <p class="lp-picks" id="lpPicks"></p>
+    </div>
+  </div>
+
+  <div class="shout" id="shout" hidden>FUS RO DAH!</div>
 
   <script src="photo-base.js"></script>
   <script src="app.js"></script>

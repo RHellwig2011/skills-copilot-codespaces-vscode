@@ -95,6 +95,13 @@ const MATCH_ROASTS = [
   "The toads have been informed.",
 ];
 
+// Erik's socials unlock as you message him.
+const INSTA = { at: 3, handle: "@toast_livingston", url: "https://www.instagram.com/toast_livingston" };
+const SNAP = { at: 200, handle: "eriklivingston7", url: "https://www.snapchat.com/add/eriklivingston7" };
+
+// The lockpicking mini-game blocks the deck after this many cards.
+const LOCK_AT = 4;
+
 const $ = (id) => document.getElementById(id);
 let deckIndex = 0;
 let matches = 0;
@@ -196,7 +203,7 @@ function swipe(dir) {
   setTimeout(() => {
     renderDeck();
     if (dir === "right") showMatch(dir);
-    else if (deckIndex >= PROFILES.length) show("done");
+    else afterCard();
   }, 380);
 }
 
@@ -206,19 +213,85 @@ function showMatch(dir) {
   $("matchCount").textContent = `${matches} match${matches === 1 ? "" : "es"}`;
   const notes = {
     right: "Erik swiped right on you before you even opened the app.",
-    super: "A Super Like! Erik is blushing. Or cold. Hard to tell.",
+    super: "FUS RO DAH! You shouted Erik clean off the screen and straight into your matches.",
   };
   $("matchNote").textContent = notes[dir];
   $("matchRoast").textContent = MATCH_ROASTS[(matches - 1) % MATCH_ROASTS.length];
   $("matchText").textContent = `You and Erik (#${deckIndex} of ${PROFILES.length}) liked each other.`;
   paintPhoto($("matchErik"), lastMatched, false);
   $("match").hidden = false;
+  // Compatibility always lands somewhere absurdly high.
+  const compat = [100, 99.8, 101, 112, 100, 147, 99.9, 1000][(matches - 1) % 8];
+  $("compatFill").style.width = "0";
+  $("compatNum").textContent = "…";
+  setTimeout(() => {
+    $("compatFill").style.width = Math.min(compat, 100) + "%";
+    $("compatNum").textContent = compat + "%";
+  }, 300);
   confetti();
 }
 
 function closeMatch() {
   $("match").hidden = true;
+  afterCard();
+}
+
+// Runs once a card is dealt with: the lock blocks the deck once, partway through.
+let lockDone = false;
+function afterCard() {
   if (deckIndex >= PROFILES.length) show("done");
+  else if (deckIndex === LOCK_AT && !lockDone) openLock();
+}
+
+// Skyrim-style lockpicking. Turning the lock rotates it further the closer the
+// pick is to the sweet spot; too far off and the pick snaps.
+let sweetSpot = 0, lockpicks = 5;
+function openLock() {
+  sweetSpot = 15 + Math.random() * 150;
+  $("lpStatus").textContent = "";
+  $("lpPicks").textContent = `Lockpicks: ${lockpicks}`;
+  $("lpAngle").value = 90;
+  aimPick();
+  $("lockpick").hidden = false;
+}
+
+function aimPick() {
+  const a = -Number($("lpAngle").value);
+  $("lpPick").style.setProperty("--a", a + "deg");
+  $("lpPick").style.transform = `rotate(${a}deg)`;
+}
+
+function turnLock() {
+  const off = Math.abs(Number($("lpAngle").value) - sweetSpot);
+  const cyl = $("lpCylinder");
+  if (off <= 10) {
+    cyl.style.transform = "rotate(90deg)";
+    $("lpStatus").textContent = "🔓 Unlocked! Erik's heart is open. Lockpicking skill increased.";
+    lockDone = true;
+    setTimeout(() => {
+      $("lockpick").hidden = true;
+      cyl.style.transform = "";
+    }, 1400);
+    return;
+  }
+  // Partial turn as a hint, then spring back.
+  cyl.style.transform = `rotate(${Math.max(0, 80 - off * 1.6)}deg)`;
+  setTimeout(() => { cyl.style.transform = ""; }, 400);
+  if (off > 35) {
+    lockpicks--;
+    const pick = $("lpPick");
+    pick.classList.add("broken");
+    setTimeout(() => { pick.classList.remove("broken"); aimPick(); }, 450);
+    if (lockpicks <= 0) {
+      lockpicks = 5;
+      $("lpStatus").textContent = "Out of lockpicks. Erik used to sell them at Walgreens. Here's 5 more.";
+    } else {
+      $("lpStatus").textContent = ["*snap* Your lockpick broke.", "*snap* Erik's heart remains locked.", "*snap* Have you tried being a Khajiit?"][lockpicks % 3];
+    }
+  } else {
+    $("lpStatus").textContent = off > 20 ? "The lock budges a little…" : "So close. The lock almost turns.";
+  }
+  $("lpPicks").textContent = `Lockpicks: ${lockpicks}`;
 }
 
 function confetti() {
@@ -232,6 +305,50 @@ function confetti() {
     c.style.animationDelay = Math.random() * 0.6 + "s";
     document.body.appendChild(c);
     setTimeout(() => c.remove(), 5000);
+  }
+}
+
+// Messages she's sent, which unlock Erik's socials.
+function sentCount() {
+  try { return Number(localStorage.getItem("erikderSent")) || 0; } catch { return 0; }
+}
+function setSentCount(n) {
+  const before = sentLocal;
+  sentLocal = n;
+  try { localStorage.setItem("erikderSent", n); } catch {}
+  renderUnlocks();
+  for (const s of [INSTA, SNAP]) {
+    if (before < s.at && n >= s.at) {
+      addMsg(s === INSTA
+        ? `🎉 3 messages! You unlocked Erik's Instagram: ${s.handle}`
+        : `👻 200 messages. Erik is now legally required to give you his Snap: ${s.handle}`, "them system");
+    }
+  }
+}
+let sentLocal = sentCount();
+
+function renderUnlocks() {
+  for (const [id, s, icon, name] of [["instaUnlock", INSTA, "📸", "Instagram"], ["snapUnlock", SNAP, "👻", "Snapchat"]]) {
+    const el = $(id);
+    el.replaceChildren();
+    if (sentLocal >= s.at) {
+      el.append(`${icon} ${name}: `);
+      const a = document.createElement("a");
+      a.href = s.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = s.handle;
+      el.append(a);
+    } else {
+      const left = s.at - sentLocal;
+      el.append(`${icon} ${name} unlocks in ${left} message${left === 1 ? "" : "s"}`);
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      const fill = document.createElement("div");
+      fill.style.width = (sentLocal / s.at) * 100 + "%";
+      bar.append(fill);
+      el.append(bar);
+    }
   }
 }
 
@@ -271,6 +388,8 @@ function showLiveChat(user) {
     $("messages").replaceChildren();
     addMsg(`Signed in as ${user.displayName || user.email}. Messages go to the real Erik. Yes, he's actually going to read this.`, "them system");
     msgs.forEach((m) => addMsg(m.text, m.from === "erik" ? "them" : "me"));
+    const hers = msgs.filter((m) => m.from === "her").length;
+    if (hers !== sentLocal) setSentCount(hers);
   });
 }
 
@@ -279,6 +398,7 @@ function openChat() {
   $("match").hidden = true;
   paintPhoto($("chatAvatar"), lastMatched, false);
   $("chat").hidden = false;
+  renderUnlocks();
   if (window.liveChat) {
     if (!liveStarted) {
       liveStarted = true;
@@ -312,12 +432,13 @@ $("composer").addEventListener("submit", async (e) => {
     return;
   }
   addMsg(text, "me");
+  setSentCount(sentLocal + 1);
   erikSays();
 });
 
 $("closeChat").addEventListener("click", () => {
   $("chat").hidden = true;
-  if (deckIndex >= PROFILES.length) show("done");
+  if ($("app").classList.contains("active") || deckIndex >= PROFILES.length) afterCard();
 });
 
 // Wiring
@@ -338,7 +459,9 @@ $("btnSuper").addEventListener("click", () => {
   const card = $("deck").lastElementChild;
   if (!card || card.classList.contains("leaving")) return;
   card.classList.add("leaving");
-  card.style.transform = "translateY(-120vh)";
+  card.style.transform = "translateY(-120vh) rotate(-25deg) scale(.6)";
+  $("shout").hidden = false;
+  setTimeout(() => { $("shout").hidden = true; }, 900);
   lastMatched = PROFILES[deckIndex];
   deckIndex++;
   setTimeout(() => { renderDeck(); showMatch("super"); }, 380);
@@ -348,3 +471,5 @@ $("sendMsg").addEventListener("click", openChat);
 $("openChat").addEventListener("click", openChat);
 $("myMsgs").addEventListener("click", openChat);
 $("restart").addEventListener("click", startSwiping);
+$("lpAngle").addEventListener("input", aimPick);
+$("lpTurn").addEventListener("click", turnLock);

@@ -172,3 +172,51 @@ h2 { margin: 0; }
 /* Confetti */
 .confetti { position: fixed; top: -20px; z-index: 20; font-size: 1.6rem; pointer-events: none; animation: fall linear forwards; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* Compatibility meter */
+.compat { width: 100%; max-width: 280px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: .85rem; }
+.compat-bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,.2); overflow: hidden; }
+.compat-fill { height: 100%; width: 0; background: var(--grad); transition: width 1.2s ease-out; }
+.compat-num { font-weight: 800; min-width: 3.5em; text-align: right; }
+
+/* Social unlocks in chat */
+.unlocks { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: .8rem; }
+.unlock { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.unlock .bar { flex: 1; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.unlock .bar div { height: 100%; background: var(--grad); }
+.unlock a { color: var(--pink); font-weight: 700; text-decoration: none; }
+
+/* Lockpicking */
+#lockpick { background: radial-gradient(circle at 50% 40%, #2a2418, #0b0a08 70%); color: #e8dcc0; text-align: center; z-index: 15; }
+.lp-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 340px; width: 100%; }
+.lp-title { font-family: Georgia, "Times New Roman", serif; letter-spacing: 2px; text-transform: uppercase; font-size: 1.3rem; }
+.lp-sub, .lp-hint { margin: 0; font-size: .85rem; color: #b8a98a; }
+.lp-lock { position: relative; width: 220px; height: 220px; margin: 10px 0; }
+.lp-cylinder {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, #8a7a5a 0 30%, #5c4f36 31% 60%, #3a3122 61% 100%);
+  box-shadow: inset 0 0 20px #000, 0 0 0 6px #241e14, 0 0 30px rgba(0,0,0,.8);
+  transition: transform .35s ease-out;
+}
+.lp-keyhole { position: absolute; left: 50%; top: 50%; width: 14px; height: 44px; margin: -22px 0 0 -7px; background: #0b0a08; border-radius: 7px 7px 3px 3px; }
+.lp-pick {
+  position: absolute; left: 50%; top: 50%; width: 120px; height: 4px; margin-top: -2px;
+  background: linear-gradient(90deg, #d8d8d8, #8c8c8c); border-radius: 2px;
+  transform-origin: 0 50%; transition: transform .1s;
+}
+.lp-pick.broken { animation: snap .4s ease-in forwards; }
+@keyframes snap { to { transform: rotate(var(--a)) translate(60px, 120px) rotate(80deg); opacity: 0; } }
+#lpAngle { width: 100%; accent-color: #c9a227; }
+#lockpick .btn.primary { background: linear-gradient(135deg, #c9a227, #7a5c12); }
+.lp-status { min-height: 1.4em; margin: 0; font-weight: 700; }
+.lp-picks { margin: 0; font-size: .8rem; color: #b8a98a; }
+
+/* Fus Ro Dah */
+.shout {
+  position: fixed; left: 50%; top: 40%; z-index: 25; transform: translate(-50%, -50%);
+  font-family: Georgia, serif; font-size: 3rem; font-weight: 900; color: #fff;
+  text-shadow: 0 0 20px #60a5fa, 0 0 40px #60a5fa; white-space: nowrap; pointer-events: none;
+  animation: shout .9s ease-out forwards;
+}
+.shout[hidden] { display: none; }
+@keyframes shout { from { transform: translate(-50%, -50%) scale(.3); opacity: 1; } to { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } }

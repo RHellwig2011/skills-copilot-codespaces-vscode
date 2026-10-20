@@ -2,6 +2,13 @@
 
 A Tinder-style joke site with exactly one option: Erik. Women get auto-matched on every right swipe; "nope" just shows the next Erik.
 
+Features:
+- Every "like" is a match, with a (wildly high) compatibility meter; "nope" just shows the next Erik
+- 🐉 Fus Ro Dah super like
+- Skyrim-style lockpicking mini-game blocks the deck after the 4th Erik
+- Message Erik: 3 messages unlocks his Instagram, 200 unlocks his Snapchat
+
+Files:
 - `index.html`, `style.css`, `app.js` — the whole site, no build step
 - `photos/` — drop Erik's photos here (see `photos/README.md`)
 - Edit the profiles and Erik's chat replies at the top of `app.js`
